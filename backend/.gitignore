@@ -4,3 +4,4 @@ dist/
 data/users.json
 data/catalog.json
 *.log
+backend/api/*.js
