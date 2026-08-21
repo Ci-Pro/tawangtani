@@ -2,6 +2,12 @@
   "expo": {
     "name": "TAWANGTANI",
     "slug": "tawangtani",
+    "owner": "cipros-team",
+    "extra": {
+      "eas": {
+        "projectId": "d97670b3-f136-4226-9ab1-d4f60303eb16"
+      }
+    },
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
