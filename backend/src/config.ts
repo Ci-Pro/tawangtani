@@ -14,7 +14,7 @@ export const config = {
     apiKey: env('OPENROUTER_API_KEY'),
     baseUrl: 'https://openrouter.ai/api/v1',
     model: env('OPENROUTER_MODEL', 'z-ai/glm-5.2:free'),
-    visionModel: env('OPENROUTER_VISION_MODEL', 'google/gemma-4-31b-it:free'),
+    visionModel: env('OPENROUTER_VISION_MODEL', 'nvidia/nemotron-nano-12b-v2-vl:free'),
     fallbackModels: env(
       'OPENROUTER_FALLBACK_MODELS',
       'nvidia/nemotron-3-super-120b-a12b:free,openai/gpt-oss-20b:free,google/gemma-4-31b-it:free'
