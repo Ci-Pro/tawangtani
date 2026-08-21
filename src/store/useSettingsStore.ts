@@ -18,7 +18,7 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       themeMode: 'light',
-      backendUrl: '',
+      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL ?? '',
       locationName: '',
       coords: null,
       toggleTheme: () =>
