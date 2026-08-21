@@ -28,7 +28,7 @@ export async function fetchWeatherAlerts(lat: number, lon: number): Promise<Weat
   const d = json.daily as unknown as {
     time: string[];
     precipitation_sum: number[];
-    wind_max: number[];
+    wind_speed_10m_max: number[];
     temperature_2m_max: number[];
     temperature_2m_min: number[];
   };
@@ -40,7 +40,7 @@ export async function fetchWeatherAlerts(lat: number, lon: number): Promise<Weat
   d.time.forEach((date, i) => {
     if (date < today) return;
     const rain = d.precipitation_sum?.[i] ?? 0;
-    const wind = d.wind_max?.[i] ?? 0;
+    const wind = d.wind_speed_10m_max?.[i] ?? 0;
     const tmax = d.temperature_2m_max?.[i] ?? 0;
     const tmin = d.temperature_2m_min?.[i] ?? 0;
 
