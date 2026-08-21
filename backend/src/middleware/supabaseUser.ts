@@ -43,7 +43,17 @@ export async function requireSupabaseUser(
     }
     (req as Request & { sbUser?: SbUser }).sbUser = user;
     next();
-  } catch (err) {
+  } catch {
     res.status(401).json({ error: 'Sesi tidak valid' });
   }
+}
+
+export async function optionalSupabaseUser(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> {
+  const user = await userFromHeader(req).catch(() => null);
+  (req as Request & { sbUser?: SbUser }).sbUser = user ?? undefined;
+  next();
 }

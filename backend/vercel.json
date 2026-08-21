@@ -1,4 +1,5 @@
 {
   "outputDirectory": "public",
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "crons": [{ "path": "/api/push/cron/weather-push", "schedule": "0 1 * * *" }]
 }

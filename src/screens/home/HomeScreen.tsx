@@ -17,6 +17,13 @@ import { describeCrop } from '@/features/farm/helpers';
 import { useActivityStore, activityLabel } from '@/store/useActivityStore';
 import { isSameDay } from '@/utils/date';
 import { RootStackParamList } from '@/navigation/types';
+import {
+  fetchWeatherAlerts,
+  notifyWeatherAlerts,
+  WeatherAlert,
+} from '@/services/weatherAlertService';
+import { getExpoPushToken } from '@/services/pushRegister';
+import { supabase } from '@/services/supabase';
 
 const QUICK_ACTIONS: {
   label: string;
@@ -48,6 +55,45 @@ const HomeScreen: React.FC = () => {
   const wc = weather ? describeWeatherCode(weather.current.weatherCode) : null;
   const spray = weather ? sprayCondition(weather.current) : null;
 
+  const [alerts, setAlerts] = React.useState<WeatherAlert[]>([]);
+  const backendUrl = useSettingsStore((s) => s.backendUrl);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!coords) return;
+      const result = await fetchWeatherAlerts();
+      if (!alive) return;
+      setAlerts(result.alerts);
+      if (result.isNew && result.alerts.length > 0) await notifyWeatherAlerts(result.alerts);
+      if (backendUrl) {
+        const token = await getExpoPushToken();
+        if (token) {
+          const session = await supabase.auth.getSession();
+          fetch(`${backendUrl.replace(/\/$/, '')}/api/push/register`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(session.data.session?.access_token
+                ? { Authorization: `Bearer ${session.data.session.access_token}` }
+                : {}),
+            },
+            body: JSON.stringify({
+              expoToken: token,
+              lat: coords.lat,
+              lon: coords.lon,
+              locationName: locationName ?? '',
+            }),
+          }).catch(() => undefined);
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coords?.lat, coords?.lon, backendUrl]);
+
   const sprayColor =
     spray?.level === 'ideal'
       ? palette.success
@@ -76,6 +122,23 @@ const HomeScreen: React.FC = () => {
           </View>
         )}
       </View>
+
+      {alerts.length > 0 && (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('WeatherDetail')}
+          style={[styles.alertBanner, { backgroundColor: palette.danger + '18' }]}
+        >
+          <Ionicons name="warning" size={20} color={palette.danger} />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={{ color: palette.danger, fontWeight: '900', fontSize: 13.5 }}>
+              Peringatan Cuaca ({alerts.length})
+            </Text>
+            <Text style={{ color: palette.text, fontSize: 12, marginTop: 1 }} numberOfLines={2}>
+              {alerts[0].message}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       <Card
         onPress={coords ? () => navigation.navigate('WeatherDetail') : undefined}
@@ -192,6 +255,13 @@ const HomeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  alertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

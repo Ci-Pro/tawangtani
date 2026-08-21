@@ -10,6 +10,7 @@ export type RootStackParamList = {
   History: undefined;
   FarmForm: { farmId?: string } | undefined;
   Activities: undefined;
+  ActivityCalendar: undefined;
   FertilizerCalculator: undefined;
   PesticideCalculator: undefined;
   GridCalculator: undefined;

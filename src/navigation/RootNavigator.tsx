@@ -19,6 +19,7 @@ import WeatherDetailScreen from '@/screens/weather/WeatherDetailScreen';
 import FarmListScreen from '@/screens/farm/FarmListScreen';
 import FarmFormScreen from '@/screens/farm/FarmFormScreen';
 import ActivitiesScreen from '@/screens/farm/ActivitiesScreen';
+import ActivityCalendarScreen from '@/screens/activity/ActivityCalendarScreen';
 import ProductListScreen from '@/screens/products/ProductListScreen';
 import ProductDetailScreen from '@/screens/products/ProductDetailScreen';
 import HistoryScreen from '@/screens/history/HistoryScreen';
@@ -127,6 +128,11 @@ const RootNavigator: React.FC = () => {
               name="Activities"
               component={ActivitiesScreen}
               options={{ title: 'Aktivitas & Reminder' }}
+            />
+            <Stack.Screen
+              name="ActivityCalendar"
+              component={ActivityCalendarScreen}
+              options={{ title: 'Kalender Aktivitas' }}
             />
             <Stack.Screen
               name="FertilizerCalculator"

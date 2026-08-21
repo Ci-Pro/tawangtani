@@ -17,6 +17,8 @@ const FarmListScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { palette } = useTheme();
   const farms = useFarmStore((s) => s.farms);
+  const activeFarmId = useFarmStore((s) => s.activeFarmId);
+  const setActiveFarm = useFarmStore((s) => s.setActiveFarm);
   const removeFarm = useFarmStore((s) => s.removeFarm);
   const removeCrop = useFarmStore((s) => s.removeCrop);
 
@@ -44,18 +46,37 @@ const FarmListScreen: React.FC = () => {
       ) : (
         <>
           <SectionHeader title="Daftar Lahan" />
-          {farms.map((farm) => (
+          {farms.map((farm) => {
+            const isActive = farm.id === (activeFarmId ?? farms[0]?.id);
+            return (
             <Card key={farm.id}>
               <View style={styles.farmHead}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: palette.text, fontWeight: '800', fontSize: 16 }}>
-                    {farm.name}
-                  </Text>
+                <TouchableOpacity
+                  style={{ flex: 1 }}
+                  onPress={() => setActiveFarm(farm.id)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: palette.text, fontWeight: '800', fontSize: 16 }}>
+                      {farm.name}
+                    </Text>
+                    {isActive && (
+                      <View
+                        style={[
+                          styles.activeBadge,
+                          { backgroundColor: palette.primarySoft },
+                        ]}
+                      >
+                        <Text style={{ color: palette.primary, fontSize: 10.5, fontWeight: '900' }}>
+                          AKTIF
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={{ color: palette.textMuted, fontSize: 12.5, marginTop: 2 }}>
                     {fmtNum(farm.areaValue)} {AREA_LABEL[farm.areaUnit]}
                     {farm.location ? ` • ${farm.location}` : ''}
                   </Text>
-                </View>
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() =>
                     Alert.alert('Hapus Lahan', `Hapus "${farm.name}"?`, [
@@ -94,6 +115,16 @@ const FarmListScreen: React.FC = () => {
               )}
 
               <View style={styles.farmActions}>
+                {!isActive && (
+                  <TouchableOpacity
+                    onPress={() => setActiveFarm(farm.id)}
+                    style={[styles.smallBtn, { borderColor: palette.textMuted }]}
+                  >
+                    <Text style={{ color: palette.textMuted, fontWeight: '700', fontSize: 12.5 }}>
+                      Jadikan Aktif
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   onPress={() => navigation.navigate('FarmForm', { farmId: farm.id })}
                   style={[styles.smallBtn, { borderColor: palette.primary }]}
@@ -104,7 +135,8 @@ const FarmListScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
             </Card>
-          ))}
+            );
+          })}
           <Button title="+ Tambah Lahan Baru" variant="ghost" onPress={() => navigation.navigate('FarmForm')} />
         </>
       )}
@@ -144,6 +176,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    marginLeft: 8,
+  },
+  activeBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
 });
 

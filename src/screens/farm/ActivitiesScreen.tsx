@@ -22,6 +22,7 @@ import {
   FarmActivity,
 } from '@/types';
 import { todayISO, fmtDateID, combineDateTime, isSameDay } from '@/utils/date';
+import { RootProps } from '@/navigation/types';
 
 const ACTIVITY_TYPES: ActivityType[] = [
   'tanam',
@@ -43,7 +44,7 @@ const TYPE_ICON: Record<ActivityType, keyof typeof Ionicons.glyphMap> = {
   lainnya: 'calendar',
 };
 
-const ActivitiesScreen: React.FC = () => {
+const ActivitiesScreen: React.FC<RootProps<'Activities'>> = ({ navigation }) => {
   const { palette } = useTheme();
   const items = useActivityStore((s) => s.items);
   const add = useActivityStore((s) => s.add);
@@ -178,6 +179,9 @@ const ActivitiesScreen: React.FC = () => {
             Jadwal budidaya & pengingat
           </Text>
         </View>
+        <TouchableOpacity onPress={() => navigation.navigate('ActivityCalendar')}>
+          <Ionicons name="calendar-outline" size={26} color={palette.primary} />
+        </TouchableOpacity>
         <Button title="+ Tambah" onPress={() => setFormOpen(true)} />
       </View>
 

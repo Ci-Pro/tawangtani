@@ -24,6 +24,7 @@ export const config = {
       .filter(Boolean),
   },
   adminToken: env('ADMIN_TOKEN', 'dev-admin-token'),
+  cronSecret: env('CRON_SECRET', ''),
 };
 
 export function hasApiKey(): boolean {

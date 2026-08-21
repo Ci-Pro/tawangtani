@@ -6,6 +6,8 @@ import { uid } from '@/utils/format';
 
 interface FarmState {
   farms: Farm[];
+  activeFarmId: string | null;
+  setActiveFarm: (id: string) => void;
   addFarm: (farm: Omit<Farm, 'id' | 'createdAt' | 'crops'>) => void;
   updateFarm: (id: string, patch: Partial<Omit<Farm, 'id' | 'crops'>>) => void;
   removeFarm: (id: string) => void;
@@ -18,6 +20,8 @@ export const useFarmStore = create<FarmState>()(
   persist(
     (set) => ({
       farms: [],
+      activeFarmId: null,
+      setActiveFarm: (id) => set({ activeFarmId: id }),
       addFarm: (farm) =>
         set((s) => ({
           farms: [
@@ -30,7 +34,14 @@ export const useFarmStore = create<FarmState>()(
           farms: s.farms.map((f) => (f.id === id ? { ...f, ...patch } : f)),
         })),
       removeFarm: (id) =>
-        set((s) => ({ farms: s.farms.filter((f) => f.id !== id) })),
+        set((s) => {
+          const farms = s.farms.filter((f) => f.id !== id);
+          return {
+            farms,
+            activeFarmId:
+              s.activeFarmId === id ? farms[0]?.id ?? null : s.activeFarmId,
+          };
+        }),
       addCrop: (farmId, crop) =>
         set((s) => ({
           farms: s.farms.map((f) =>

@@ -61,6 +61,7 @@ const AIChatScreen: React.FC = () => {
   const locationName = useSettingsStore((s) => s.locationName);
   const products = useProductStore((s) => s.products);
   const farms = useFarmStore((s) => s.farms);
+  const activeFarmId = useFarmStore((s) => s.activeFarmId);
 
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -70,7 +71,7 @@ const AIChatScreen: React.FC = () => {
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   const buildContext = (): ToolContext => {
-    const farm = farms[0];
+    const farm = farms.find((f) => f.id === activeFarmId) ?? farms[0];
     return {
       coords: coords ?? undefined,
       locationName,
