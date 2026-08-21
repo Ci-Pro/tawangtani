@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "TAWANGTANI",
+    "slug": "tawangtani",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#14532d"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tawangtani.app"
+    },
+    "android": {
+      "package": "com.tawangtani.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#14532d"
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "TAWANGTANI memerlukan akses lokasi untuk menampilkan cuaca di lahan Anda."
+        }
+      ]
+    ]
+  }
+}
