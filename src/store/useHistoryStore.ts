@@ -4,9 +4,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HistoryItem, HistoryType } from '@/types';
 import { uid } from '@/utils/format';
 
+interface AddHistoryInput {
+  type: HistoryType;
+  title: string;
+  inputsText: string;
+  resultText: string;
+  method?: string;
+}
+
 interface HistoryState {
   items: HistoryItem[];
-  add: (item: { type: HistoryType; title: string; inputsText: string; resultText: string }) => void;
+  add: (item: AddHistoryInput) => void;
   clear: () => void;
 }
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import * as Location from 'expo-location';
 
 import { WeatherData } from '@/types';
-import { fetchWeather } from '@/services/weather/openMeteo';
+import { fetchWeatherCached } from '@/services/weather/openMeteo';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
 export function useLocation() {
@@ -54,7 +54,7 @@ export function useWeather() {
     setLoading(true);
     setError(null);
     try {
-      setData(await fetchWeather(coords.lat, coords.lon));
+      setData(await fetchWeatherCached(coords.lat, coords.lon));
     } catch {
       setError('Cuaca tidak tersedia. Periksa koneksi internet.');
     } finally {

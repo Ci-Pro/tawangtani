@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '@/components/Button';
@@ -45,9 +45,25 @@ const PesticideCalculatorScreen: React.FC = () => {
   const products = useProductStore((s) => s.products);
   const farms = useFarmStore((s) => s.farms);
 
-  const pesticides = useMemo(() => products.filter((p) => p.category === 'pestisida'), [products]);
+  const pesticides = useMemo(() => {
+    const q = pickerQuery.toLowerCase().trim();
+    return products.filter((p) => {
+      if (p.category !== 'pestisida') return false;
+      if (!q) return true;
+      return (
+        p.brand.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q) ||
+        p.activeIngredient.toLowerCase().includes(q) ||
+        p.doses.some(
+          (d) =>
+            d.crop.toLowerCase().includes(q) || d.target.toLowerCase().includes(q)
+        )
+      );
+    });
+  }, [products, pickerQuery]);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState('');
   const [selected, setSelected] = useState<Product | null>(null);
   const [selectedDose, setSelectedDose] = useState<ProductDose | null>(null);
 
@@ -142,6 +158,13 @@ const PesticideCalculatorScreen: React.FC = () => {
               />
             ))}
           </View>
+        ) : null}
+
+        {selected && selectedDose ? (
+          <Text style={[styles.doseSource, { color: palette.textMuted }]}>
+            Sumber dosis: {selectedDose.source}
+            {selected.updatedAt ? ` • Diperbarui: ${selected.updatedAt}` : ''}
+          </Text>
         ) : null}
 
         <SectionHeader title="Dosis & Tangki" />
@@ -241,14 +264,29 @@ const PesticideCalculatorScreen: React.FC = () => {
       <Modal visible={pickerOpen} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
           <View style={[styles.modalSheet, { backgroundColor: palette.surface }]}>
-            <View style={styles.modalHeader}>
-              <Text style={{ color: palette.text, fontWeight: '800', fontSize: 16 }}>
-                Pilih Produk Pestisida
-              </Text>
-              <TouchableOpacity onPress={() => setPickerOpen(false)}>
-                <Ionicons name="close" size={24} color={palette.textMuted} />
-              </TouchableOpacity>
-            </View>
+              <View style={styles.modalHeader}>
+                <Text style={{ color: palette.text, fontWeight: '800', fontSize: 16 }}>
+                  Pilih Produk Pestisida
+                </Text>
+                <TouchableOpacity onPress={() => setPickerOpen(false)}>
+                  <Ionicons name="close" size={24} color={palette.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <View
+                style={[
+                  styles.pickerSearch,
+                  { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
+                ]}
+              >
+                <Ionicons name="search" size={16} color={palette.textMuted} />
+                <TextInput
+                  value={pickerQuery}
+                  onChangeText={setPickerQuery}
+                  placeholder="Cari merek / bahan aktif / komoditas / target..."
+                  placeholderTextColor={palette.textMuted}
+                  style={{ flex: 1, color: palette.text, fontSize: 13.5 }}
+                />
+              </View>
             <FlatList
               data={pesticides}
               keyExtractor={(p) => p.id}
@@ -263,6 +301,9 @@ const PesticideCalculatorScreen: React.FC = () => {
                   </Text>
                   <Text style={{ color: palette.textMuted, fontSize: 12 }}>
                     {item.activeIngredient} • {item.formulation}
+                  </Text>
+                  <Text style={{ color: palette.textMuted, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+                    Untuk: {item.doses.map((d) => d.target).join('; ')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -300,6 +341,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
+  },
+  pickerSearch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  doseSource: {
+    fontSize: 11.5,
+    lineHeight: 17,
+    marginTop: -6,
+    marginBottom: 12,
   },
   warnText: {
     fontSize: 13,

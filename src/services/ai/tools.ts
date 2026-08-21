@@ -1,8 +1,10 @@
 import { Product } from '@/types';
 import { calcFertilizer, FertilizerInput } from '@/features/fertilizer/calculator';
 import { calcPesticide, PesticideInput } from '@/features/pesticide/calculator';
-import { fetchWeather, describeWeatherCode, sprayCondition } from '@/services/weather/openMeteo';
+import { fetchWeatherCached, describeWeatherCode, sprayCondition } from '@/services/weather/openMeteo';
 import { fmtNum } from '@/utils/format';
+import { useActivityStore } from '@/store/useActivityStore';
+import { todayISO } from '@/utils/date';
 
 export interface FarmContextData {
   farmName?: string;
@@ -59,7 +61,7 @@ export async function executeTool(name: string, args: Record<string, unknown>, c
       if (!ctx.coords) {
         return { summary: 'Lokasi belum tersedia. Aktifkan izin lokasi di beranda untuk data cuaca.' };
       }
-      const w = await fetchWeather(ctx.coords.lat, ctx.coords.lon);
+      const w = await fetchWeatherCached(ctx.coords.lat, ctx.coords.lon);
       const wc = describeWeatherCode(w.current.weatherCode);
       const spray = sprayCondition(w.current);
       const lines = [
@@ -117,8 +119,21 @@ export async function executeTool(name: string, args: Record<string, unknown>, c
       return { summary: `Lahan "${f.farmName}" (${f.areaText}). Tanaman: ${crops}.` };
     }
     case 'activity_log': {
+      const activity = (args.activity as string) ?? 'lainnya';
+      const valid: string[] = ['tanam', 'pemupukan', 'penyemprotan', 'penyiraman', 'penyiangan', 'panen', 'lainnya'];
+      const type = (valid.includes(activity) ? activity : 'lainnya') as Parameters<
+        ReturnType<typeof useActivityStore.getState>['add']
+      >[0]['activity'];
+      await useActivityStore.getState().add({
+        activity: type,
+        date: (args.date as string) ?? todayISO(),
+        productName: args.productName ? String(args.productName) : undefined,
+        doseText: args.doseText ? String(args.doseText) : undefined,
+        note: 'Dicatat oleh AI Tani',
+        source: 'ai',
+      });
       return {
-        summary: `Aktivitas "${String(args.activity ?? 'tanam')}" dicatat ke riwayat (demo lokal).`,
+        summary: `Aktivitas "${type}" dicatat ke daftar Aktivitas hari ini. Silakan cek & sesuaikan di menu Aktivitas.`,
       };
     }
     default:

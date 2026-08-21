@@ -4,6 +4,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  locale?: string;
 }
 
 export type GrowthStage = 'semai' | 'vegetatif' | 'generatif' | 'pematangan' | 'panen';
@@ -56,10 +57,46 @@ export interface Product {
   source: string;
   verified: boolean;
   verifiedAt?: string;
+  updatedAt?: string;
   warnings?: ProductWarnings;
 }
 
-export type HistoryType = 'fertilizer' | 'pesticide' | 'conversion';
+export interface ProductAuditEntry {
+  id: string;
+  productId: string;
+  productName: string;
+  action: 'replace-all' | 'update';
+  detail: string;
+  at: string;
+}
+
+export type ActivityType =
+  | 'tanam'
+  | 'pemupukan'
+  | 'penyemprotan'
+  | 'penyiraman'
+  | 'penyiangan'
+  | 'panen'
+  | 'lainnya';
+
+export interface FarmActivity {
+  id: string;
+  farmId?: string;
+  cropId?: string;
+  cropLabel?: string;
+  activity: ActivityType;
+  productId?: string;
+  productName?: string;
+  doseText?: string;
+  date: string;
+  remindAt?: string;
+  notificationId?: string;
+  note?: string;
+  done: boolean;
+  source: 'manual' | 'ai';
+}
+
+export type HistoryType = 'fertilizer' | 'pesticide' | 'conversion' | 'grid';
 
 export interface HistoryItem {
   id: string;
@@ -67,6 +104,7 @@ export interface HistoryItem {
   title: string;
   inputsText: string;
   resultText: string;
+  method?: string;
   createdAt: string;
 }
 
@@ -75,6 +113,14 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   toolName?: string;
+  actions?: { label: string; route: string }[];
+  createdAt: string;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
   createdAt: string;
 }
 
@@ -108,6 +154,13 @@ export interface WeatherData {
   current: WeatherCurrent;
   hourly: WeatherHourlyItem[];
   daily: WeatherDailyItem[];
+}
+
+export interface WeatherCacheEntry {
+  lat: number;
+  lon: number;
+  observedAt: number;
+  data: WeatherData;
 }
 
 export type SprayLevel = 'ideal' | 'hati-hati' | 'hindari';

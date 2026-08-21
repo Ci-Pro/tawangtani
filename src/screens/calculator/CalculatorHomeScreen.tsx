@@ -28,6 +28,12 @@ const ITEMS: {
     route: 'PesticideCalculator',
   },
   {
+    title: 'Kalkulator Grid',
+    desc: 'Luas dari panjang × lebar, pembagian petak/grid',
+    icon: 'grid-outline',
+    route: 'GridCalculator',
+  },
+  {
     title: 'Konversi Satuan',
     desc: 'Luas, berat, dan volume pertanian',
     icon: 'swap-horizontal-outline',

@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import FadeIn from './FadeIn';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export const Screen: React.FC<{
@@ -36,18 +37,20 @@ export const ResultCard: React.FC<{
 }> = ({ label, value, unit, sub }) => {
   const { palette } = useTheme();
   return (
-    <View style={[styles.result, { backgroundColor: palette.primaryDark }]}>
-      <Text style={[styles.resultLabel, { color: '#c9ead4' }]}>{label}</Text>
-      <View style={styles.resultRow}>
-        <Text style={styles.resultValue}>{value}</Text>
-        {unit ? <Text style={[styles.resultUnit, { color: '#c9ead4' }]}> {unit}</Text> : null}
+    <FadeIn>
+      <View style={[styles.result, { backgroundColor: palette.primaryDark }]}>
+        <Text style={[styles.resultLabel, { color: '#c9ead4' }]}>{label}</Text>
+        <View style={styles.resultRow}>
+          <Text style={styles.resultValue}>{value}</Text>
+          {unit ? <Text style={[styles.resultUnit, { color: '#c9ead4' }]}> {unit}</Text> : null}
+        </View>
+        {sub?.map((s, i) => (
+          <Text key={i} style={[styles.resultSub, { color: '#a7d7b6' }]}>
+            {s}
+          </Text>
+        ))}
       </View>
-      {sub?.map((s, i) => (
-        <Text key={i} style={[styles.resultSub, { color: '#a7d7b6' }]}>
-          {s}
-        </Text>
-      ))}
-    </View>
+    </FadeIn>
   );
 };
 

@@ -14,6 +14,8 @@ import { useLocation, useWeather } from '@/hooks/useWeather';
 import { describeWeatherCode, sprayCondition } from '@/services/weather/openMeteo';
 import { fmtNum } from '@/utils/format';
 import { describeCrop } from '@/features/farm/helpers';
+import { useActivityStore, activityLabel } from '@/store/useActivityStore';
+import { isSameDay } from '@/utils/date';
 import { RootStackParamList } from '@/navigation/types';
 
 const QUICK_ACTIONS: {
@@ -23,7 +25,7 @@ const QUICK_ACTIONS: {
 }[] = [
   { label: 'Kalkulator', icon: 'calculator-outline', route: 'FertilizerCalculator' },
   { label: 'Produk', icon: 'cube-outline', route: 'ProductList' },
-  { label: 'Riwayat', icon: 'time-outline', route: 'History' },
+  { label: 'Aktivitas', icon: 'calendar-outline', route: 'Activities' },
   { label: 'Cuaca', icon: 'partly-sunny-outline', route: 'WeatherDetail' },
 ];
 
@@ -38,6 +40,11 @@ const HomeScreen: React.FC = () => {
   const { data: weather, loading, error } = useWeather();
 
   const crops = farms.flatMap((f) => f.crops);
+  const activities = useActivityStore((s) => s.items);
+  const toggleDone = useActivityStore((s) => s.toggleDone);
+  const todayActivities = activities.filter(
+    (a) => !a.done && isSameDay(new Date(`${a.date}T00:00:00`), new Date())
+  );
   const wc = weather ? describeWeatherCode(weather.current.weatherCode) : null;
   const spray = weather ? sprayCondition(weather.current) : null;
 
@@ -126,10 +133,41 @@ const HomeScreen: React.FC = () => {
       </View>
 
       <SectionHeader
-        title="Tanaman Aktif"
+        title="Aktivitas Hari Ini"
         action="Kelola"
-        onAction={() => navigation.navigate('FarmForm')}
+        onAction={() => navigation.navigate('Activities')}
       />
+      {todayActivities.length === 0 ? (
+        <Card onPress={() => navigation.navigate('Activities')}>
+          <Text style={{ color: palette.textMuted, textAlign: 'center', paddingVertical: 8 }}>
+            🗓️ Tidak ada jadwal hari ini.{'\n'}Ketuk untuk menambah aktivitas & pengingat.
+          </Text>
+        </Card>
+      ) : (
+        todayActivities.slice(0, 3).map((a) => (
+          <Card key={a.id}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <TouchableOpacity onPress={() => toggleDone(a.id)}>
+                <Ionicons name="ellipse-outline" size={22} color={palette.textMuted} />
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: palette.text, fontWeight: '700', fontSize: 14 }}>
+                  {activityLabel(a.activity)}
+                  {a.cropLabel ? ` • ${a.cropLabel}` : ''}
+                </Text>
+                {a.productName ? (
+                  <Text style={{ color: palette.textMuted, fontSize: 12 }}>{a.productName}</Text>
+                ) : null}
+              </View>
+              {a.remindAt ? (
+                <Ionicons name="notifications" size={16} color={palette.primary} />
+              ) : null}
+            </View>
+          </Card>
+        ))
+      )}
+
+      <SectionHeader title="Tanaman Aktif" />
       {crops.length === 0 ? (
         <Card onPress={() => navigation.navigate('FarmForm')}>
           <Text style={{ color: palette.textMuted, textAlign: 'center', paddingVertical: 10 }}>

@@ -1,6 +1,37 @@
-import { WeatherData, WeatherCurrent, SprayCondition } from '@/types';
+import { WeatherData, WeatherCurrent, SprayCondition, WeatherCacheEntry } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
+const CACHE_KEY = 'twt-weather-cache';
+export const WEATHER_CACHE_TTL_MS = 30 * 60 * 1000;
+
+export function isCacheFresh(entry: WeatherCacheEntry | null, now = Date.now()): boolean {
+  if (!entry) return false;
+  return now - entry.observedAt < WEATHER_CACHE_TTL_MS;
+}
+
+export async function fetchWeatherCached(lat: number, lon: number): Promise<WeatherData> {
+  try {
+    const raw = await AsyncStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const entry = JSON.parse(raw) as WeatherCacheEntry;
+      if (
+        Math.abs(entry.lat - lat) < 0.01 &&
+        Math.abs(entry.lon - lon) < 0.01 &&
+        isCacheFresh(entry)
+      ) {
+        return entry.data;
+      }
+    }
+  } catch {}
+
+  const data = await fetchWeather(lat, lon);
+  try {
+    const entry: WeatherCacheEntry = { lat, lon, observedAt: Date.now(), data };
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+  } catch {}
+  return data;
+}
 
 interface OpenMeteoResponse {
   current?: {

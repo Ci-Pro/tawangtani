@@ -5,10 +5,14 @@ import { Card, SectionHeader } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useProductStore } from '@/store/useProductStore';
+import { fmtDateTime } from '@/utils/format';
 
 const ProductDetailScreen: React.FC<{ productId: string }> = ({ productId }) => {
   const { palette } = useTheme();
   const product = useProductStore((s) => s.products.find((p) => p.id === productId));
+  const audits = useProductStore((s) =>
+    s.audits.filter((a) => a.productId === productId || a.productId === '*')
+  );
 
   if (!product) {
     return (
@@ -86,7 +90,29 @@ const ProductDetailScreen: React.FC<{ productId: string }> = ({ productId }) => 
             ? `Terverifikasi${product.verifiedAt ? ` (${product.verifiedAt})` : ''}`
             : 'Belum terverifikasi — wajib cek label kemasan'}
         </Text>
+        {product.updatedAt ? (
+          <Text style={{ color: palette.textMuted, fontSize: 12.5, marginTop: 4 }}>
+            Data terakhir diperbarui: {product.updatedAt}
+          </Text>
+        ) : null}
       </Card>
+
+      {audits.length > 0 ? (
+        <Card>
+          <SectionHeader title="Audit Trail" />
+          {audits.slice(0, 5).map((a) => (
+            <View key={a.id} style={styles.auditRow}>
+              <Ionicons name="receipt-outline" size={14} color={palette.textMuted} />
+              <Text style={{ color: palette.textMuted, fontSize: 11.5, flex: 1, marginLeft: 6 }}>
+                {a.action === 'replace-all' ? a.detail : a.detail} — {a.productName}
+              </Text>
+              <Text style={{ color: palette.textMuted, fontSize: 10.5 }}>
+                {fmtDateTime(a.at)}
+              </Text>
+            </View>
+          ))}
+        </Card>
+      ) : null}
 
       <Text style={[styles.disclaimer, { color: palette.textMuted }]}>
         Kalkulator dan katalog adalah alat bantu. Selalu ikuti label resmi produk, arahan penyuluh,
@@ -120,6 +146,12 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
+  },
+  auditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
   },
   disclaimer: {
     fontSize: 11,

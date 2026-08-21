@@ -46,7 +46,9 @@ export const useAuthStore = create<AuthState>()(
           password,
         };
         await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...accounts, account]));
-        set({ user: { id: account.id, name: account.name, email: account.email } });
+        set({
+          user: { id: account.id, name: account.name, email: account.email, locale: 'id-ID' },
+        });
       },
       signOut: () => set({ user: null }),
     }),

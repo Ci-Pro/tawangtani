@@ -3,6 +3,8 @@ import { areaToHa, assertPositive } from '@/utils/format';
 
 export type FertilizerDoseUnit = 'kg/ha' | 'g/m2' | 'kg/m2' | 'g/ha' | 'ton/ha';
 
+export type FertilizerMethod = 'tabur' | 'kocor' | 'larut-air' | 'lainnya';
+
 export const FERTILIZER_DOSE_UNITS: FertilizerDoseUnit[] = [
   'kg/ha',
   'g/m2',
@@ -10,6 +12,22 @@ export const FERTILIZER_DOSE_UNITS: FertilizerDoseUnit[] = [
   'g/ha',
   'ton/ha',
 ];
+
+export const FERTILIZER_METHODS: FertilizerMethod[] = ['tabur', 'kocor', 'larut-air', 'lainnya'];
+
+export const FERTILIZER_METHOD_LABEL: Record<FertilizerMethod, string> = {
+  tabur: 'Tabur',
+  kocor: 'Kocor',
+  'larut-air': 'Larut air',
+  lainnya: 'Lainnya',
+};
+
+export const METHOD_HINT: Record<FertilizerMethod, string> = {
+  tabur: 'Tabur merata lalu aduk/inpor tanah ringan; hindari kontak langsung dengan batang.',
+  kocor: 'Aplikasi di sekitar lingkar tanaman atau alur, kemudian ditutup tanah.',
+  'larut-air': 'Larutkan sesuai takaran air; gunakan saat tanaman membutuhkan serapan cepat.',
+  lainnya: 'Ikuti petunjuk pada kemasan atau rekomendasi penyuluh.',
+};
 
 export interface FertilizerInput {
   areaValue: number;

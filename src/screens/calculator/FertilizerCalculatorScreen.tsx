@@ -11,7 +11,11 @@ import { useFarmStore } from '@/store/useFarmStore';
 import {
   calcFertilizer,
   FERTILIZER_DOSE_UNITS,
+  FERTILIZER_METHODS,
+  FERTILIZER_METHOD_LABEL,
+  METHOD_HINT,
   FertilizerDoseUnit,
+  FertilizerMethod,
   FertilizerResult,
 } from '@/features/fertilizer/calculator';
 import { AREA_UNITS, AREA_LABEL, fmtNum, parseIdNumber } from '@/utils/format';
@@ -48,6 +52,7 @@ const FertilizerCalculatorScreen: React.FC = () => {
   const [areaUnit, setAreaUnit] = useState<AreaUnit>(farms[0]?.areaUnit ?? 'ha');
   const [dose, setDose] = useState('');
   const [doseUnit, setDoseUnit] = useState<FertilizerDoseUnit>('kg/ha');
+  const [method, setMethod] = useState<FertilizerMethod>('tabur');
   const [gridCount, setGridCount] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FertilizerResult | null>(null);
@@ -83,6 +88,7 @@ const FertilizerCalculatorScreen: React.FC = () => {
       title: 'Kalkulasi Pupuk',
       inputsText: `${areaValue} ${AREA_LABEL[areaUnit]} • dosis ${dose} ${doseUnit}${gridCount ? ` • ${gridCount} petak` : ''}`,
       resultText: `Total ${fmtNum(result.totalKg)} kg${result.perGridKg !== undefined ? ` • per petak ${fmtNum(result.perGridKg)} kg` : ''}`,
+      method: FERTILIZER_METHOD_LABEL[method],
     });
     Alert.alert('Tersimpan', 'Hasil kalkulasi disimpan ke Riwayat.');
   };
@@ -125,6 +131,16 @@ const FertilizerCalculatorScreen: React.FC = () => {
           value={gridCount}
           onChangeText={setGridCount}
         />
+
+        <SectionHeader title="Metode Aplikasi" />
+        <View style={styles.chips}>
+          {FERTILIZER_METHODS.map((m) => (
+            <Chip key={m} label={FERTILIZER_METHOD_LABEL[m]} active={method === m} onPress={() => setMethod(m)} />
+          ))}
+        </View>
+        <Text style={[styles.methodHint, { color: palette.textMuted }]}>
+          💡 {METHOD_HINT[method]}
+        </Text>
 
         {error ? <Text style={{ color: palette.danger, marginBottom: 8 }}>{error}</Text> : null}
         <Button title="Hitung" onPress={handleCalc} />
@@ -176,6 +192,12 @@ const styles = StyleSheet.create({
   formula: {
     fontSize: 13,
     lineHeight: 21,
+  },
+  methodHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 14,
+    marginTop: -6,
   },
   note: {
     fontSize: 11.5,

@@ -13,10 +13,12 @@ import AIChatScreen from '@/screens/ai/AIChatScreen';
 import CalculatorHomeScreen from '@/screens/calculator/CalculatorHomeScreen';
 import FertilizerCalculatorScreen from '@/screens/calculator/FertilizerCalculatorScreen';
 import PesticideCalculatorScreen from '@/screens/calculator/PesticideCalculatorScreen';
+import GridCalculatorScreen from '@/screens/calculator/GridCalculatorScreen';
 import UnitConverterScreen from '@/screens/calculator/UnitConverterScreen';
 import WeatherDetailScreen from '@/screens/weather/WeatherDetailScreen';
 import FarmListScreen from '@/screens/farm/FarmListScreen';
 import FarmFormScreen from '@/screens/farm/FarmFormScreen';
+import ActivitiesScreen from '@/screens/farm/ActivitiesScreen';
 import ProductListScreen from '@/screens/products/ProductListScreen';
 import ProductDetailScreen from '@/screens/products/ProductDetailScreen';
 import HistoryScreen from '@/screens/history/HistoryScreen';
@@ -114,6 +116,11 @@ const RootNavigator: React.FC = () => {
               options={{ title: 'Tambah Lahan' }}
             />
             <Stack.Screen
+              name="Activities"
+              component={ActivitiesScreen}
+              options={{ title: 'Aktivitas & Reminder' }}
+            />
+            <Stack.Screen
               name="FertilizerCalculator"
               component={FertilizerCalculatorScreen}
               options={{ title: 'Kalkulator Pupuk' }}
@@ -122,6 +129,11 @@ const RootNavigator: React.FC = () => {
               name="PesticideCalculator"
               component={PesticideCalculatorScreen}
               options={{ title: 'Kalkulator Pestisida' }}
+            />
+            <Stack.Screen
+              name="GridCalculator"
+              component={GridCalculatorScreen}
+              options={{ title: 'Kalkulator Grid' }}
             />
             <Stack.Screen
               name="UnitConverter"

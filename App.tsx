@@ -1,14 +1,14 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 
-import { ThemeProvider } from '@/theme/ThemeProvider';
+import { AppProviders } from '@/app/providers';
 import RootNavigator from '@/navigation/RootNavigator';
 
 export default function App() {
   return (
-    <ThemeProvider>
+    <AppProviders>
       <StatusBar style="auto" />
       <RootNavigator />
-    </ThemeProvider>
+    </AppProviders>
   );
 }

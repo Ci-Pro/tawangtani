@@ -8,8 +8,10 @@ export type RootStackParamList = {
   ProductDetail: { productId: string };
   History: undefined;
   FarmForm: { farmId?: string } | undefined;
+  Activities: undefined;
   FertilizerCalculator: undefined;
   PesticideCalculator: undefined;
+  GridCalculator: undefined;
   UnitConverter: undefined;
 };
 

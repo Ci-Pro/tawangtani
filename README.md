@@ -8,15 +8,19 @@ Aplikasi mobile berbahasa Indonesia untuk membantu petani mengelola budidaya: AI
 
 | Modul | Status | Deskripsi |
 |---|---|---|
-| AI Tani | ✅ | Chat asisten dengan pola **Agent + Tools** (`get_weather`, `fertilizer_calculator`, `pesticide_calculator`, `product_search`, `farm_context`, `activity_log`). Mode lokal berjalan tanpa backend; mendukung backend LLM via URL yang diatur di Profil. |
-| Cuaca & Suhu | ✅ | Data Open-Meteo (tanpa API key): suhu, kelembapan, hujan, angin, prakiraan per jam & 5 hari, indikator kondisi semprot, peringatan cuaca ekstrem. |
-| Kalkulator Pupuk | ✅ | Luas (m²/are/ha) × dosis (kg/ha, g/m², dst.), pembagian per petak/grid, rumus ditampilkan. |
-| Kalkulator Pestisida | ✅ | mL/L, g/L, mL/ha, g/ha — kebutuhan per tangki & total, peringatan APD/interval masuk kembali/pra-panen. |
+| AI Tani | ✅ | Chat asisten dengan pola **Agent + Tools** (`get_weather`, `fertilizer_calculator`, `pesticide_calculator`, `product_search`, `farm_context`, `activity_log`). Multi-sesi chat, mode diagnosis hama/penyakit, tombol aksi menuju kalkulator, konteks otomatis (lahan, umur & fase tanaman). Mode lokal berjalan tanpa backend; mendukung backend LLM via URL di Profil. |
+| Diagnosis Foto | ✅* | Lampirkan foto tanaman → dikirim ke endpoint `/ai/vision` server Anda (*butuh backend; V1.5 penuh). |
+| Cuaca & Suhu | ✅ | Open-Meteo (tanpa API key) + **cache lokal 30 menit**: suhu, kelembapan, hujan, angin, prakiraan per jam & 5 hari, indikator kondisi semprot, peringatan ekstrem. |
+| Kalkulator Pupuk | ✅ | Luas (m²/are/ha) × dosis (kg/ha, g/m², dst.), pembagian per petak/grid, **metode aplikasi** (tabur/kocor/larut air), rumus ditampilkan. |
+| Kalkulator Grid | ✅ | Luas dari **panjang × lebar**, pembagian petak, konversi m²/are/ha. |
+| Kalkulator Pestisida | ✅ | mL/L, g/L, mL/ha, g/ha — pencarian produk (merek/bahan aktif/komoditas/target), kebutuhan per tangki & total, sumber dosis + tanggal pembaruan, peringatan APD/interval masuk kembali/pra-panen. |
 | Konversi Satuan | ✅ | Luas, berat, volume. |
-| Database Produk | ✅ | Merek, bahan aktif, formulasi, dosis + sumber & status verifikasi. Dapat diperbarui dari server tanpa update APK. |
+| Database Produk | ✅ | Merek, bahan aktif, formulasi, dosis + **sumber, tanggal pembaruan, status verifikasi**, dan **audit trail** perubahan data. Dapat diperbarui dari server tanpa update APK (`replaceAll` tercatat di audit). |
 | Lahan & Tanaman | ✅ | Profil lahan, jenis/varietas, tanggal tanam, fase pertumbuhan → konteks AI. |
-| Riwayat | ✅ | Simpan hasil kalkulasi. |
+| Aktivitas & Reminder | ✅ | Jadwal budidaya (tanam/pemupukan/penyemprotan/panen/dll.) dengan **pengingat notifikasi lokal**, tampil di Beranda. |
+| Riwayat | ✅ | Simpan hasil kalkulasi (pupuk, pestisida, grid, konversi) + metode aplikasi. |
 | Auth | ✅ | Login & signup lokal (demo). Siap diganti Supabase/Firebase Auth. |
+| Build APK | ✅ | Konfigurasi `eas.json` siap `eas build -p android --profile preview`. |
 
 ## 🔒 Prinsip Keselamatan
 
@@ -38,7 +42,14 @@ Scan QR dengan aplikasi **Expo Go** (Android/iOS).
 ```bash
 npm install -g eas-cli
 eas login
-eas build -p android --profile preview
+eas build -p android --profile preview   # APK
+eas build -p android --profile production # AAB (Play Store)
+```
+
+### Regenerasi Aset Ikon
+
+```bash
+npm run generate-assets
 ```
 
 ### Test

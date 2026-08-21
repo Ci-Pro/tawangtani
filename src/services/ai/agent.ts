@@ -5,6 +5,7 @@ import { executeTool, TOOLS, ToolContext, ToolResult } from './tools';
 export interface AgentTurn {
   reply: string;
   toolsUsed: string[];
+  actions?: { label: string; route: string }[];
 }
 
 interface BackendToolCall {
@@ -41,6 +42,41 @@ export async function runAgent(
     }
   }
   return runOfflineAgent(userText, ctx);
+}
+
+export async function runVisionAgent(
+  imageBase64: string,
+  ctx: ToolContext,
+  backendUrl?: string
+): Promise<AgentTurn> {
+  const url = getBackendUrl(backendUrl);
+  if (!url) {
+    return {
+      reply:
+        '📷 Diagnosis foto memerlukan server AI yang terhubung.\n\n' +
+        'Sementara itu, Anda bisa menjelaskan gejala secara tertulis:\n' +
+        '1. Komoditas & fase pertumbuhan\n2. Gejala yang terlihat\n3. Sebaran & kecepatan menyebar\n\n' +
+        'Atur URL Backend di menu Profil bila Anda memiliki server AI sendiri.',
+      toolsUsed: [],
+    };
+  }
+  try {
+    const res = await postJson<BackendResponse>(`${url}/ai/vision`, {
+      imageBase64,
+      context: ctx,
+    });
+    return {
+      reply:
+        (res.reply ?? '(AI tidak merespons)') +
+        '\n\n⚠️ Diagnosis berbasis foto bersifat dugaan — konfirmasi ke penyuluh sebelum aplikasi pestisida.',
+      toolsUsed: ['vision'],
+    };
+  } catch {
+    return {
+      reply: 'Gagal menghubungi server AI untuk analisis foto. Periksa koneksi atau URL backend.',
+      toolsUsed: [],
+    };
+  }
 }
 
 async function runBackendAgent(
@@ -121,10 +157,40 @@ export async function runOfflineAgent(userText: string, ctx: ToolContext): Promi
     return {
       reply:
         `${r.summary}\n\nSaya mengasumsikan luas ${nums[0]} ha dan dosis ${nums[1]} kg/ha. ` +
-        'Untuk hasil presisi (satuan lain, pembagian petak), buka menu Kalkulator → Pupuk.' +
+        'Untuk hasil presisi (satuan lain, pembagian petak), buka Kalkulator → Pupuk.' +
         DISCLAIMER_TEXT,
       toolsUsed,
+      actions: [{ label: '🧮 Buka Kalkulator Pupuk', route: 'FertilizerCalculator' }],
     };
+  }
+
+  if (has(text, 'ingatkan', 'reminder', 'pengingat', 'jadwal')) {
+    toolsUsed.push('activity_log');
+    const r = await executeTool('activity_log', { activity: 'lainnya' }, ctx);
+    return {
+      reply:
+        'Saya bisa bantu jadwalkan kegiatan budidaya dengan pengingat notifikasi.\n\n' +
+        `${r.summary}\nUntuk pengaturan lengkap (tanggal, jam, produk), buka menu Aktivitas.`,
+      toolsUsed,
+      actions: [{ label: '⏰ Buka Aktivitas & Reminder', route: 'Activities' }],
+    };
+  }
+
+  if (has(text, 'catat', 'simpan aktivitas', 'tandai')) {
+    toolsUsed.push('activity_log');
+    const activity = has(text, 'semprot')
+      ? 'penyemprotan'
+      : has(text, 'pupuk')
+        ? 'pemupukan'
+        : has(text, 'tanam')
+          ? 'tanam'
+          : has(text, 'panen')
+            ? 'panen'
+            : has(text, 'siram')
+              ? 'penyiraman'
+              : 'lainnya';
+    const r = await executeTool('activity_log', { activity }, ctx);
+    return { reply: r.summary, toolsUsed };
   }
 
   if (has(text, 'pestisida', 'semprot', 'racun', 'obat')) {
@@ -136,6 +202,7 @@ export async function runOfflineAgent(userText: string, ctx: ToolContext): Promi
         'saya akan hitung kebutuhan per tangki otomatis.' +
         DISCLAIMER_TEXT,
       toolsUsed,
+      actions: [{ label: '🧪 Buka Kalkulator Pestisida', route: 'PesticideCalculator' }],
     };
   }
 
