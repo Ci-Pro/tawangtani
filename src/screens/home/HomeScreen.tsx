@@ -31,6 +31,7 @@ const QUICK_ACTIONS: {
   route: keyof RootStackParamList;
 }[] = [
   { label: 'Kalkulator', icon: 'calculator-outline', route: 'FertilizerCalculator' },
+  { label: 'Harga', icon: 'pricetags-outline', route: 'Market' },
   { label: 'Produk', icon: 'cube-outline', route: 'ProductList' },
   { label: 'Aktivitas', icon: 'calendar-outline', route: 'Activities' },
   { label: 'Cuaca', icon: 'partly-sunny-outline', route: 'WeatherDetail' },

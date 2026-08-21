@@ -1,5 +1,7 @@
 import { ToolContext, ToolResult } from '../types';
 import { searchKnowledge } from '../store/knowledge';
+import { listMarketPrices } from '../store/marketPrices';
+import { guidanceFor, toView } from '../services/marketData';
 
 function assertPositive(v: number, name: string): void {
   if (!Number.isFinite(v) || v <= 0) throw new Error(`${name} harus lebih dari 0`);
@@ -186,6 +188,28 @@ export async function executeTool(
       const activity = String(args.activity ?? 'lainnya');
       return {
         summary: `Aktivitas "${activity}" dicatat. Beri tahu pengguna untuk memeriksa dan melengkapi detail di menu Aktivitas aplikasi.`,
+      };
+    }
+
+    case 'market_price': {
+      const commodity =
+        typeof args.commodity === 'string' && args.commodity.trim()
+          ? args.commodity.trim().toLowerCase().replace(/\s+/g, '_')
+          : undefined;
+      const province =
+        typeof args.province === 'string' && args.province.trim() ? args.province.trim() : undefined;
+      const rows = await listMarketPrices(commodity, province);
+      if (rows.length === 0) {
+        return {
+          summary:
+            'Tidak ada data harga untuk komoditas tersebut. Komoditas yang tersedia: bawang_merah, bawang_putih, cabai_rawit_merah, cabai_merah_besar, tomat, kentang, wortel, kol, jagung_pipilan, beras_medium.',
+        };
+      }
+      const views = rows.map(toView);
+      return {
+        summary: views
+          .map((v) => `${guidanceFor(v)} (Sumber: ${v.source}; diperbarui ${v.updatedAt.slice(0, 10)})`)
+          .join('\n'),
       };
     }
 

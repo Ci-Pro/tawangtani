@@ -94,6 +94,24 @@ export const TOOL_SCHEMAS: ORToolSchema[] = [
   {
     type: 'function',
     function: {
+      name: 'market_price',
+      description:
+        'Cek harga pasar komoditas hortikultura/pangan (bawang merah, cabai, tomat, dll) beserta tren dan rekomendasi jual. WAJIB dipakai saat pengguna bertanya harga, kapan jual, atau untung-rugi panen.',
+      parameters: {
+        type: 'object',
+        properties: {
+          commodity: {
+            type: 'string',
+            description: "Kunci komoditas, mis. bawang_merah, cabai_rawit_merah. Kosong = semua.",
+          },
+          province: { type: 'string', description: "Nama provinsi, default 'nasional'" },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'activity_log',
       description: 'Catat aktivitas budidaya pengguna (tanam, pemupukan, penyemprotan, panen, dll).',
       parameters: {
@@ -113,7 +131,7 @@ export const TOOL_SCHEMAS: ORToolSchema[] = [
   },
 ];
 
-export const PROMPT_TOOL_DIRECTIVE = `Anda memiliki akses tools berikut: get_weather, fertilizer_calculator, pesticide_calculator, product_search, farm_context, search_knowledge, activity_log.
+export const PROMPT_TOOL_DIRECTIVE = `Anda memiliki akses tools berikut: get_weather, fertilizer_calculator, pesticide_calculator, product_search, farm_context, search_knowledge, market_price, activity_log.
 Bila perlu menggunakan sebuah tool, balas HANYA satu baris JSON tanpa teks lain:
 {"tool": "nama_tool", "arguments": {...}}
 Setelah menerima [TOOL_RESULT ...], lanjutkan menjawab pengguna dengan bahasa Indonesia.

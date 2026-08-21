@@ -1,0 +1,12 @@
+[
+  { "commodity": "bawang_merah", "label": "Bawang Merah", "price": 35000, "prev": 36500 },
+  { "commodity": "bawang_putih", "label": "Bawang Putih", "price": 40000, "prev": 39500 },
+  { "commodity": "cabai_rawit_merah", "label": "Cabai Rawit Merah", "price": 62000, "prev": 58500 },
+  { "commodity": "cabai_merah_besar", "label": "Cabai Merah Besar", "price": 45000, "prev": 44300 },
+  { "commodity": "tomat", "label": "Tomat", "price": 12000, "prev": 11500 },
+  { "commodity": "kentang", "label": "Kentang", "price": 15000, "prev": 14800 },
+  { "commodity": "wortel", "label": "Wortel", "price": 11000, "prev": 11200 },
+  { "commodity": "kol", "label": "Kol/Kubis", "price": 8000, "prev": 8200 },
+  { "commodity": "jagung_pipilan", "label": "Jagung Pipilan Kering", "price": 6000, "prev": 5900 },
+  { "commodity": "beras_medium", "label": "Beras Medium", "price": 13700, "prev": 13690 }
+]

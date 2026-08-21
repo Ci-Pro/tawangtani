@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useChatStore, useActiveMessages } from '@/store/useChatStore';
@@ -49,6 +49,7 @@ const DIAGNOSIS_PROMPT =
 const AIChatScreen: React.FC = () => {
   const { palette } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<{ AI: { prefill?: string } | undefined }, 'AI'>>();
   const messages = useActiveMessages();
   const sessions = useChatStore((s) => s.sessions);
   const newSession = useChatStore((s) => s.newSession);
@@ -64,6 +65,16 @@ const AIChatScreen: React.FC = () => {
   const activeFarmId = useFarmStore((s) => s.activeFarmId);
 
   const [input, setInput] = useState('');
+  const prefillConsumed = useRef(false);
+
+  useEffect(() => {
+    const p = route.params?.prefill;
+    if (p && !prefillConsumed.current) {
+      prefillConsumed.current = true;
+      send(p);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.prefill]);
   const [busy, setBusy] = useState(false);
   const [diagnosisMode, setDiagnosisMode] = useState(false);
   const [sessionsOpen, setSessionsOpen] = useState(false);

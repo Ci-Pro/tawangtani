@@ -26,6 +26,7 @@ import HistoryScreen from '@/screens/history/HistoryScreen';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 import LoginScreen from '@/screens/auth/LoginScreen';
 import SignupScreen from '@/screens/auth/SignupScreen';
+import MarketScreen from '@/screens/market/MarketScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator();
@@ -133,6 +134,11 @@ const RootNavigator: React.FC = () => {
               name="ActivityCalendar"
               component={ActivityCalendarScreen}
               options={{ title: 'Kalender Aktivitas' }}
+            />
+            <Stack.Screen
+              name="Market"
+              component={MarketScreen}
+              options={{ title: 'Harga Pasar' }}
             />
             <Stack.Screen
               name="FertilizerCalculator"

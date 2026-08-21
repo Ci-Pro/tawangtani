@@ -9,7 +9,8 @@
     "build": "tsc",
     "start": "node dist/src/index.js",
     "typecheck": "tsc --noEmit",
-    "seed:knowledge": "tsx scripts/seed-knowledge.ts"
+    "seed:knowledge": "tsx scripts/seed-knowledge.ts",
+    "seed:market": "tsx scripts/seed-market.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
