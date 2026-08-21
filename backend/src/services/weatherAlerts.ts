@@ -10,6 +10,7 @@ interface DailyItem {
   weather_code?: number;
   precipitation_sum?: number;
   wind_max?: number;
+  wind_speed_10m_max?: number;
   temperature_2m_max?: number;
   temperature_2m_min?: number;
 }
@@ -18,7 +19,7 @@ export async function fetchWeatherAlerts(lat: number, lon: number): Promise<Weat
   const params = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
-    daily: 'precipitation_sum,wind_max,temperature_2m_max,temperature_2m_min',
+    daily: 'precipitation_sum,wind_speed_10m_max,temperature_2m_max,temperature_2m_min',
     timezone: 'auto',
     forecast_days: '3',
   });
