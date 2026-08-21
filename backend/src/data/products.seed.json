@@ -1,0 +1,218 @@
+[
+  {
+    "id": "pup-urea",
+    "brand": "Petrosida",
+    "name": "Urea",
+    "category": "pupuk",
+    "formulation": "Granular 46% N",
+    "activeIngredient": "Nitrogen (N) 46%",
+    "doses": [
+      {
+        "id": "pup-urea-d1",
+        "crop": "Padi",
+        "target": "Pemupukan dasar & susulan I",
+        "dose": 200,
+        "unit": "kg/ha",
+        "source": "Rekomendasi umum balittanaman; wajib disesuaikan rekomendasi lokal (BP3K/PPL)"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false,
+    "warnings": {
+      "notes": ["Aplikasi bertahap agar efisiensi nitrogen lebih baik"]
+    }
+  },
+  {
+    "id": "pup-phonska",
+    "brand": "Phonska",
+    "name": "NPK Phonska 15-15-15",
+    "category": "pupuk",
+    "formulation": "Granular",
+    "activeIngredient": "N 15% : P2O5 15% : K2O 15%",
+    "doses": [
+      {
+        "id": "pup-phonska-d1",
+        "crop": "Padi",
+        "target": "Pemupukan dasar",
+        "dose": 300,
+        "unit": "kg/ha",
+        "source": "Rekomendasi umum; wajib disesuaikan rekomendasi lokal (BP3K/PPL)"
+      },
+      {
+        "id": "pup-phonska-d2",
+        "crop": "Jagung",
+        "target": "Pemupukan dasar",
+        "dose": 250,
+        "unit": "kg/ha",
+        "source": "Rekomendasi umum; wajib disesuaikan rekomendasi lokal (BP3K/PPL)"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false
+  },
+  {
+    "id": "pup-za",
+    "brand": "Z A",
+    "name": "Zwikker Ammonium Sulfat",
+    "category": "pupuk",
+    "formulation": "Kristal 21% N + 24% S",
+    "activeIngredient": "Nitrogen (N) 21%, Sulfur (S) 24%",
+    "doses": [
+      {
+        "id": "pup-za-d1",
+        "crop": "Padi",
+        "target": "Pemupukan susulan",
+        "dose": 100,
+        "unit": "kg/ha",
+        "source": "Rekomendasi umum; wajib disesuaikan rekomendasi lokal (BP3K/PPL)"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false
+  },
+  {
+    "id": "pup-sp36",
+    "brand": "SP-36",
+    "name": "Super Fosfat 36",
+    "category": "pupuk",
+    "formulation": "Granular",
+    "activeIngredient": "P2O5 36%",
+    "doses": [
+      {
+        "id": "pup-sp36-d1",
+        "crop": "Padi",
+        "target": "Pemupukan dasar",
+        "dose": 100,
+        "unit": "kg/ha",
+        "source": "Rekomendasi umum; wajib disesuaikan rekomendasi lokal (BP3K/PPL)"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false
+  },
+  {
+    "id": "pup-kcl",
+    "brand": "KCl",
+    "name": "Kalium Klorida MOP",
+    "category": "pupuk",
+    "formulation": "Kristal/Granular",
+    "activeIngredient": "K2O 60%",
+    "doses": [
+      {
+        "id": "pup-kcl-d1",
+        "crop": "Padi",
+        "target": "Pemupukan dasar",
+        "dose": 75,
+        "unit": "kg/ha",
+        "source": "Rekomendasi umum; wajib disesuaikan rekomendasi lokal (BP3K/PPL)"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false
+  },
+  {
+    "id": "pes-ridomil",
+    "brand": "Syngenta",
+    "name": "Ridomil Gold MZ 72 WP",
+    "category": "pestisida",
+    "formulation": "WP (Wettable Powder)",
+    "activeIngredient": "Metalaksil-M 4% + Mancozeb 64%",
+    "doses": [
+      {
+        "id": "pes-ridomil-d1",
+        "crop": "Umum (sayuran, padi)",
+        "target": "Penyakit layu & bercak daun (fungisida)",
+        "dose": 3,
+        "unit": "g/L",
+        "waterVolumeLPerHa": 600,
+        "source": "Rentang umum label; WAJIB diverifikasi ke label kemasan sebelum digunakan"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false,
+    "warnings": {
+      "apd": "Masker, sarung tangan, kacamata pelindung, pakaian lengan panjang",
+      "reEntryHours": 24,
+      "preHarvestDays": 14,
+      "notes": ["Jangan dicampur dengan bahan alkali tanpa data kompatibilitas"]
+    }
+  },
+  {
+    "id": "pes-decis",
+    "brand": "Bayer",
+    "name": "Decis 25 EC",
+    "category": "pestisida",
+    "formulation": "EC (Emulsifiable Concentrate)",
+    "activeIngredient": "Deltametrin 25 g/L",
+    "doses": [
+      {
+        "id": "pes-decis-d1",
+        "crop": "Umum (sayuran, padi)",
+        "target": "Penggerek, ulat daun, wereng (insektisida)",
+        "dose": 1,
+        "unit": "mL/L",
+        "waterVolumeLPerHa": 500,
+        "source": "Rentang umum label; WAJIB diverifikasi ke label kemasan sebelum digunakan"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false,
+    "warnings": {
+      "apd": "Masker, sarung tangan, topi, pakaian menutupi kulit",
+      "reEntryHours": 12,
+      "preHarvestDays": 3,
+      "notes": ["Beracun bagi lebah dan ikan; hindari penyemprotan saat berbunga"]
+    }
+  },
+  {
+    "id": "pes-agrimek",
+    "brand": "Syngenta",
+    "name": "Agri-mek 18 EC",
+    "category": "pestisida",
+    "formulation": "EC (Emulsifiable Concentrate)",
+    "activeIngredient": "Abamektin 18 g/L",
+    "doses": [
+      {
+        "id": "pes-agrimek-d1",
+        "crop": "Umum (sayuran)",
+        "target": "Lalat pengorok daun, tungau (insektisida/akarisida)",
+        "dose": 2,
+        "unit": "mL/L",
+        "waterVolumeLPerHa": 600,
+        "source": "Rentang umum label; WAJIB diverifikasi ke label kemasan sebelum digunakan"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false,
+    "warnings": {
+      "apd": "Masker, sarung tangan, kacamata pelindung",
+      "reEntryHours": 12,
+      "preHarvestDays": 7
+    }
+  },
+  {
+    "id": "pes-sevin",
+    "brand": "Bayer",
+    "name": "Sevin 85 S",
+    "category": "pestisida",
+    "formulation": "WP (Wettable Powder)",
+    "activeIngredient": "Karbaryl 850 g/kg",
+    "doses": [
+      {
+        "id": "pes-sevin-d1",
+        "crop": "Umum",
+        "target": "Ulat grayak, kutu daun (insektisida kontak)",
+        "dose": 2,
+        "unit": "g/L",
+        "waterVolumeLPerHa": 600,
+        "source": "Rentang umum label; WAJIB diverifikasi ke label kemasan sebelum digunakan"
+      }
+    ],
+    "source": "Contoh data seed TAWANGTANI",
+    "verified": false,
+    "warnings": {
+      "apd": "Masker, sarung tangan, pakaian lengan panjang",
+      "reEntryHours": 24
+    }
+  }
+]

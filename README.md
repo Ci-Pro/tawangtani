@@ -30,12 +30,26 @@ Aplikasi mobile berbahasa Indonesia untuk membantu petani mengelola budidaya: AI
 
 ## 🚀 Menjalankan
 
+### Aplikasi mobile
+
 ```bash
 npm install
 npx expo start
 ```
 
 Scan QR dengan aplikasi **Expo Go** (Android/iOS).
+
+### Backend (AI online + auth + katalog)
+
+Lihat [`backend/README.md`](backend/README.md). Ringkas:
+
+```bash
+cd backend
+cp .env.example .env   # isi OPENROUTER_API_KEY (gratis dari openrouter.ai)
+npm install && npm run dev
+```
+
+Model LLM gratis via OpenRouter (Llama 3.3 70B, Gemini Flash, Qwen 2.5 — otomatis fallback). API key hanya tersimpan di server, tidak pernah masuk APK.
 
 ### Build APK Android
 
