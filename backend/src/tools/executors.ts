@@ -1,4 +1,5 @@
 import { ToolContext, ToolResult } from '../types';
+import { searchKnowledge } from '../store/knowledge';
 
 function assertPositive(v: number, name: string): void {
   if (!Number.isFinite(v) || v <= 0) throw new Error(`${name} harus lebih dari 0`);
@@ -157,6 +158,28 @@ export async function executeTool(
       }
       const crops = f.cropsText?.length ? f.cropsText.join(', ') : 'belum ada tanaman';
       return { summary: `Lahan "${f.farmName}" (${f.areaText}). Tanaman: ${crops}.` };
+    }
+
+    case 'search_knowledge': {
+      const query = String(args.query ?? '').trim();
+      if (!query) return { summary: 'Query pencarian kosong.' };
+      const hits = await searchKnowledge(query, 4);
+      if (hits.length === 0) {
+        return {
+          summary:
+            'Tidak ada artikel basis pengetahuan yang cocok. Jawab dengan pengetahuan umum yang aman dan sarankan konsultasi PPL.',
+        };
+      }
+      return {
+        summary:
+          'Artikel basis pengetahuan ditemukan (kutip sumbernya di jawaban):\n' +
+          hits
+            .map(
+              (h) =>
+                `- [${h.crop}/${h.topic}] ${h.content} (Sumber: ${h.source})`
+            )
+            .join('\n'),
+      };
     }
 
     case 'activity_log': {

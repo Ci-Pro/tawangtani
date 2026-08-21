@@ -1,0 +1,177 @@
+{
+  "docs": [
+    {
+      "id": "kb-padi-budidaya",
+      "title": "Panduan Budidaya Padi",
+      "description": "Tahapan budidaya padi: lahan, sebar bibit, pengairan AWD, pemupukan menurut umur.",
+      "chunks": [
+        {
+          "crop": "padi",
+          "topic": "budidaya",
+          "content": "Persiapan lahan padi sawah dilakukan dengan pengolahan tanah dua kali: olah pertama saat lahan kering untuk memecah gumpalan, lalu genangkan air dan olah kedua (pacobaan) hingga tanah halus. Jemur lahan 7-14 hari setelah panen sebelumnya (olah tanah konservasi) untuk memecah siklus hama tanah dan mengoksidasi besi. Bibit umur inang (Umpan) siap dipindah pada umur 15-21 hari setelah sebar (hss), bibit umur pendek (IP400, Inpari) cukup 12-15 hari. Jarak tanam legowo 2:1 (25x50x12,5 cm) atau tajuk 25x25 cm memudahkan pemeliharaan dan meningkatkan populasi malai.",
+          "source": "Rekomendasi umum Balitbangtan / BPTP; sesuaikan kondisi lokal"
+        },
+        {
+          "crop": "padi",
+          "topic": "pemupukan",
+          "content": "Pemupukan padi mengikuti dosis rekomendasi lokal (contoh umum: Urea 200-250 kg/ha, SP-36 75-100 kg/ha, KCl 50-100 kg/ha). Pemupukan dasar SP-36 dan sepertiga Urea serta setengah KCl ditebar saat persiapan akhir lahan. Susulan I pada umur 21-25 hst berupa separuh Urea dan sisa KCl. Susulan II pada umur 35-40 hst (awal masuk generatif) berupa sisa Urea. Hindari pemupukan nitrogen berlebih karena membuat tanaman rentan wereng dan penyakit blas. Waktu terbaik menebar pupuk adalah pagi hari saat air di petak dangkal agar pupuk terserap efektif.",
+          "source": "Rekomendasi teknis budidaya padi Kementan; wajib sesuaikan rekomendasi BP3K/PPL setempat"
+        },
+        {
+          "crop": "padi",
+          "topic": "budidaya",
+          "content": "Pengairan berselang (AWD - Alternate Wetting and Drying) menghemat air irigasi hingga 30% tanpa menurunkan hasil: biarkan permukaan air turun alami hingga 15 cm di bawah permukaan tanah (cek dengan pipa perforasi), lalu genangkan lagi. Lakukan penggenangan kembali sebelum fase generatif dan jaga tetap basah saat berbunga. AWD juga mengurangi emisi gas metana dan menekan penyakit layu akar. Hentikan pengairan 10-14 hari sebelum panen untuk mempermudah pemanenan.",
+          "source": "Panduan AWD IRRI / Balitbangtan"
+        },
+        {
+          "crop": "padi",
+          "topic": "hama_penyakit",
+          "content": "Wereng batang coklat (Nilaparvata lugens) menyerang padi dengan gejala hampa malai (kerdil, ujung daun kering kecoklatan, banyak lalat kecil di pangkal batang saat diguncang). Pengendalian: gunakan varietas tahan (Inpari), atur jarak tanam tidak terlalu rapat, kurangi nitrogen berlebih, dan semprot insektisida hanya bila populasi melewati ambang kendali (lebih dari 2 ekor per rumpun pada vegetatif atau lebih dari 5 ekor per rumpun pada generatif). Pemusnahan serangga secara massal justru memicu ledakan wabah karena membunuh musuh alami.",
+          "source": "Pedoman Pengendalian OPT Padi Kementan; konfirmasi ambang kendal ke PPL setempat"
+        },
+        {
+          "crop": "padi",
+          "topic": "hama_penyakit",
+          "content": "Penggerek batang padi (Scirpophaga incertulas dan spesies lain) menyebabkan sundep pada fase vegetatif dan beluk pada fase generatif. Ulat masuk ke batang sehingga insektisida kontak tidak efektif lagi setelah gejala muncul. Pengendalian preventif: potong dan musnahkan tunggul terinfeksi, gunakan perangkap feromon/ lampu tarik untuk memantau populasi ngengat, dan semprot insektisida saat puncak kelebihan telur/ngengat terdeteksi atau bila jumlah sundep melewati 10-15% rumpun. Musuh alami seperti Trichogramma dan parasitoid telur sangat membantu bila tidak disemprot pestisida spektrum luas.",
+          "source": "Pedoman Pengendalian OPT Padi Kementan; konfirmasi ambang kendal ke PPL setempat"
+        },
+        {
+          "crop": "padi",
+          "topic": "hama_penyakit",
+          "content": "Penyakit blas (Pyricularia oryzae) menyerang daun (bercak mata ketam) dan malai (blas malai yang paling merugikan). Berkembang pesat saat cuaca lembap berkabut, suhu dingin di malam hari, dan nitrogen berlebih. Pengendalian: pilih varietas tahan, atur pemupukan N proporsional, jaga genangan air stabil (kering-membasuh bergantian memicu blas), dan semprot fungisida sistemik (trisiklazol, azoksistrobin) saat gejala awal muncul di daun bendera atau saat malai keluar bila tekanan penyakit tinggi. Rotasi fungisida dengan mode aksi berbeda untuk cegah resistensi.",
+          "source": "Pedoman Pengendalian OPT Padi Kementan; ikuti label produk"
+        }
+      ]
+    },
+    {
+      "id": "kb-jagung-budidaya",
+      "title": "Panduan Budidaya Jagung",
+      "description": "Budidaya jagung: populasi, pemupukan, pengendalian ulat grayak dan penggerek tongkol.",
+      "chunks": [
+        {
+          "crop": "jagung",
+          "topic": "budidaya",
+          "content": "Jagung hibrida ditanam dengan jarak 70x20 cm atau 75x15 cm (populasi sekitar 90 ribu-95 ribu tanaman per hektare), satu benih per lubang untuk hibrida tunggal. Tanam pada awal musim hujan atau dengan irigasi tambahan pada bulan kering. Varietas unggul nasional antara lain NK, Bisi, Pionir, dan hibrida komposit pemerintah. Siapkan saluran drainase karena jagung tidak tahan genangan; akar mati dalam 2-3 hari terendam.",
+          "source": "Rekomendasi umum budidaya jagung Balitbangtan"
+        },
+        {
+          "crop": "jagung",
+          "topic": "pemupukan",
+          "content": "Pemupukan jagung umumnya Urea 300-350 kg/ha, SP-36 100-150 kg/ha, KCl 50-75 kg/ha (sesuaikan rekomendasi lokal). Pemberian dasar sepertiga dosis saat tanam di alur samping lubang tanam. Susulan I saat umur 14-21 hst (separuh Urea) ditimbunkan lalu ditutup tanah. Susulan II saat umur 30-35 hst (sisa Urea dan KCl) menjelang pembungaan jantan. Pemupukan susulan harus diikuti penimbunan agar pupuk tidak menguap dan tidak dimakan burung.",
+          "source": "Rekomendasi teknis budidaya jagung; sesuaikan hasil uji tanah lokal"
+        },
+        {
+          "crop": "jagung",
+          "topic": "hama_penyakit",
+          "content": "Ulat grayak jagung baru (Spodoptera frugiperda) menyerang sejak pembibitan: gejala lubang tidak beraturan pada daun dan gundukan kotoran ulat di rosette daun. Ulat aktif malam hari dan bersembunyi di lipatan daun siang hari. Pengendalian: pantau mingguan mulai 7 hst, tabur kapur dolomit/kapur bakar ke liang rosette saat pagi, gunakan perangkap feromon massal, dan semprot insektisida selektif (emamektin benzoat, spinetoram) sore hari saat ulat mulai aktif, arahkan ke titik tumbuh. Rotasi mode aksi karena hama ini cepat resisten.",
+          "source": "Pedoman pengendalian Spodoptera frugiperda Kementan; ikuti label produk"
+        },
+        {
+          "crop": "jagung",
+          "topic": "hama_penyakit",
+          "content": "Penggerek tongkol jagung (Helicoverpa armigera) menyerang rambut dan biji tongkol muda sehingga biji rusak dan jamur masuk. Pengendalian paling efektif dilakukan saat rambut segar keluar dan ulat masih kecil di permukaan tongkol; setelah masuk tongkol sulit dikendalikan. Semprot insektisida ke arah rambut saat populasi tinggi, panen tepat waktu, dan kupas tongkol segera setelah panen untuk memutus siklus. Jamur karat jagung muncul sebagai bercak bubuk coklat pada daun saat cuaca lembap; kendalikan dengan fungisida dan pilih varietas tahan.",
+          "source": "Rekomendasi umum pengendalian OPT jagung; ikuti label produk"
+        }
+      ]
+    },
+    {
+      "id": "kb-cabai-budidaya",
+      "title": "Panduan Budidaya Cabai",
+      "description": "Budidaya cabai: persemaihan, pemupukan, antraknosa, layu, kuning-virus, thrips dan kutu daun.",
+      "chunks": [
+        {
+          "crop": "cabai",
+          "topic": "budidaya",
+          "content": "Cabai dibudidayakan melalui persemaihan 21-30 hari lalu dipindah ke bedengan bermulsa plastik hitam dengan jarak 50x60 cm sampai 60x70 cm. Mulsa plastik menekan gulma, menjaga kelembapan, dan mengurangi pencucian pupuk. Cabai tidak tahan genangan; buat bedengan tinggi 30-40 cm dan saluran air baik, terutama di musim hujan. Panen pertama umumnya 70-80 hari setelah tanam, lalu bisa dipetik setiap 5-7 hari hingga 8-10 kali panen.",
+          "source": "Rekomendasi umum budidaya cabai Balitbangtan"
+        },
+        {
+          "crop": "cabai",
+          "topic": "pemupukan",
+          "content": "Pemupukan cabai: pupuk kandang matang 10-15 ton/ha atau kompos sebagai dasar. Anorganik umumnya Urea 150-250 kg/ha, SP-36 150-200 kg/ha, KCl 100-150 kg/ha dibagi beberapa kali: dasar saat tanam, lalu susulan setiap 2-3 minggu mulai umur 14 hst, proporsi nitrogen dinaikkan saat fase generatif untuk mendukung pembentukan buah. Banyak petani menggunakan pupuk kandang cair atau pupuk daun sebagai suplemen; pastikan produk terdaftar. Kurangi nitrogen saat buah masak agar buah tidak terlalu sukulen dan mudah busuk.",
+          "source": "Rekomendasi teknis budidaya cabai; sesuaikan uji tanah dan rekomendasi PPL"
+        },
+        {
+          "crop": "cabai",
+          "topic": "hama_penyakit",
+          "content": "Antraknosa cabai (Colletotrichum spp.) muncul sebagai bercak cekung coklat gelap dengan titik oranye pada buah, terutama saat panen basah dan kelembapan tinggi. Pengendalian: pakai benih sehat, singkirkan buah terserang dari lahan (jangan dibuang di parit), atur jarak tanam agar sirkulasi baik, dan semprot fungisida protektif berbahan aktif klorotalonil/azoksistrobin sejak pembungaan terutama sebelum musim hujan deras. Panen buah sehat lebih dulu dan hindari panen saat basah.",
+          "source": "Pedoman pengendalian OPT cabai; ikuti label produk"
+        },
+        {
+          "crop": "cabai",
+          "topic": "hama_penyakit",
+          "content": "Layu fusarium dan layu bakteri pada cabai menyebabkan tanaman layu mendadak di siang hari lalu mati; bedakan dengan memotong batang: coklat kecoklatan pembuluh = fusarium, cairan putih keruh + bau = bakteri (Ralstonia). Pengendalian utama adalah preventif: rotasi dengan padi atau jagung minimal satu musim, gunakan varietas tahan, aplikasi trichoderma pada media semai dan lubang tanam, dan jangan menanam cabai berulang di lahan yang pernah parah terserang. Tanaman sakar bakteri harus dicabut dan dibakar; jangan dipindah ke bedengan lain.",
+          "source": "Prinsip pengendalian layu cabai (Balitbangtan); konsultasikan kasus berat ke BPP/PPL"
+        },
+        {
+          "crop": "cabai",
+          "topic": "hama_penyakit",
+          "content": "Thrips dan kutu daun pada cabai menyebabkan daun keriting, kerdil, dan virus kuning tersebar (gemini virus). Karena keduanya vektor virus, pengendalian dini sangat penting: pasang perangkap lem kuning, semprot insektisida selektif (imidakloprid, spiromesifen sesuai label) saat populasi awal terdeteksi, dan cabut tanaman gejala virus kuning (daun kuning keriting kerdil) karena tak ada obat untuk virus. Gunakan mulsa reflektif perak untuk mengusir kutu daun dan whiteflies.",
+          "source": "Pedoman pengendalian OPT cabai; ikuti label produk"
+        }
+      ]
+    },
+    {
+      "id": "kb-bawang-budidaya",
+      "title": "Panduan Budidaya Bawang Merah",
+      "description": "Budidaya bawang merah: jadwal tanam, ulat bawang, thrips, dan penyakit ungu.",
+      "chunks": [
+        {
+          "crop": "bawang merah",
+          "topic": "budidaya",
+          "content": "Bawang merah optimal ditanam pada musim kemarau dengan irigasi terkontrol; tanam di musim hujan berisiko tinggi penyakit daun dan umbi. Umur panen 55-70 hari setelah tanam. Gunakan umbi bibit bersertifikat berdiameter 1,5 cm ke atas. Pembentukan umbi dipicu oleh hari pendek dan pupuk kalium cukup; nitrogen berlebih di akhir masa tanam menunda pembesaran umbi dan memperberat serangan penyakit daun.",
+          "source": "Rekomendasi umum budidaya bawang merah Balitbangtan"
+        },
+        {
+          "crop": "bawang merah",
+          "topic": "hama_penyakit",
+          "content": "Ulat bawang (Spodoptera exigua) menusuk jaringan daun sehingga tampak bercak putih transparan lalu lubang tidak beraturan; serangan berat membuat daun patah dan umbi gagal besar. Ulat bersembunyi di pangkal daun siang hari. Kendalikan dengan: periksa mingguan, kumpulkan telur massa di balik daun, semprot insektisida selektif (emamektin benzoat, klorantraniliprol) sore hari, dan rotasi bahan aktif tiap 2-3 kali semprot. Perangkap feromon membantu memantau dan menekan populasi ngengat jantan.",
+          "source": "Pedoman pengendalian OPT bawang merah; ikuti label produk"
+        },
+        {
+          "crop": "bawang merah",
+          "topic": "hama_penyakit",
+          "content": "Penyakit ungu bawang merah (Alternaria porri) menampakkan bercak cekung keunguan dengan pinggiran kuning pada daun, berkembang saat lembap dan bersuhu hangat. Tripes menyebabkan garis keperakan dan menjadi pintu masuk jamur. Kombinasi pengendalian: semprot fungisida (mancozeb, difenokonazol) bergilir dengan insektisida tripes saat cuaca lembap, jaga jarak tanam cukup, dan hindari penyiraman dari atas yang membasahi daun lama. Stop penyiraman 10-14 hari sebelum panen agar umbi matang fisiologis dan tahan simpan.",
+          "source": "Pedoman pengendalian OPT bawang merah; ikuti label produk"
+        }
+      ]
+    },
+    {
+      "id": "kb-pht-keselamatan",
+      "title": "PHT dan Keselamatan Pestisida",
+      "description": "Prinsip pengendalian hama terpadu, waktu semprot, APD, interval masuk kembali dan pra-panen.",
+      "chunks": [
+        {
+          "crop": "umum",
+          "topic": "pht",
+          "content": "Pengendalian Hama Terpadu (PHT) menekan ketergantungan kimia dengan urutan langkah: (1) budidaya sehat: varietas tahan, rotasi tanaman, sanitasi lahan; (2) pemantauan rutin mingguan dengan jalur pantau; (3) manfaatkan musuh alami (kumbang koksi, laba-laba pemangsa, Trichogramma) dan mikroba (Beauveria, Metarhizium, NPV); (4) gunakan perangkap lem, feromon, lampu tarik; (5) semprot pestisida hanya bila populasi melewati ambang kendali, pilih yang selektif, dan rotasi mode aksi (grup IRAC/FRAC berbeda) untuk cegah resistensi.",
+          "source": "Prinsip PHT FAO/Kementan"
+        },
+        {
+          "crop": "umum",
+          "topic": "keselamatan",
+          "content": "Waktu penyemprotan pestisida terbaik adalah pagi hari (06.00-09.00) atau sore (16.00-18.00) ketika angin tenang, suhu tidak panas, dan serangga target aktif. Hindari semprot saat hujan atau akan hujan (tercuci, sia-sia dan mencemari), saat siang terik (uap cepat menguap, berbahaya bagi operator), dan saat berbunga untuk melindungi lebah. Arahkan semprot menjauh dari tubuh, jangan melawan arah angin.",
+          "source": "Prinsip aplikasi pestisida aman (Kementan/FAO)"
+        },
+        {
+          "crop": "umum",
+          "topic": "keselamatan",
+          "content": "Alat Pelindung Diri minimum saat menyemprot pestisida: masker, sarung tangan, kacamata pelindung, topi lebar, dan pakaian lengan panjang yang menutup kulit. Jangan mencampur pestisida dengan tangan langsung atau di dekat sumber air. Setelah bekerja: mandi dengan sabun, cuci pakaian kerja terpisah. Simpan pestisida di tempat terkunci jauh dari makanan dan jangkauan anak. Kemasan kosong jangan dipakai wadah lain; rendam dan tusuk lalu buang sesuai aturan. Jika terpapar: lepaskan pakaian, bilas kulit banyak air, dan segera ke fasilitas kesehatan dengan bawa label produk.",
+          "source": "Keselamatan pestisida (label produk dan pedoman Kementan)"
+        },
+        {
+          "crop": "umum",
+          "topic": "keselamatan",
+          "content": "Interval masuk kembali (re-entry interval) adalah jarak waktu minimal sebelum orang boleh masuk ke lahan yang baru disemprot, umumnya 12-24 jam sesuai label. Interval jeda pra-panen (pre-harvest interval) adalah jarak waktu minimal dari semprot terakhir sampai boleh dipanen, berkisar 3-14 hari tergantung bahan aktif, demi residu aman dikonsumsi. Selalu patuhi angka di label produk yang dipakai; catat tanggal semprot agar panen tidak melanggar interval. Melanggar interval pra-panen berisiko residu melebihi batas aman dan produk ditolak pasar.",
+          "source": "Peraturan label pestisida (Komisi Pestisida); cek label tiap produk"
+        },
+        {
+          "crop": "umum",
+          "topic": "pemupukan",
+          "content": "Prinsip pemupukan efisien: kenapa status hara tanah lewat uji tanah (layanan BP3K/BPTP), sesuaikan dosis dengan rekomendasi lokasi spesifik, dan gunakan prinsip 4 Benar: jenis pupuk benar, dosis benar, waktu benar, cara aplikasi benar. Pupuk nitrogen mudah hilang tercuci dan menguap; bagi ke beberapa kali pemberian dan timbun atau larutkan tepat. Pupuk organik/kandang rutin menjaga struktur tanah dan kesehatan mikrobiota sehingga efisiensi pupuk kimia naik dari tahun ke tahun.",
+          "source": "Prinsip pemupukan berbasis uji tanah (Balitbangtan)"
+        }
+      ]
+    }
+  ]
+}

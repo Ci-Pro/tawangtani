@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatMessage, ChatSession } from '@/types';
 import { uid } from '@/utils/format';
+import { syncChatSession } from '@/services/chatSync';
 
 interface ChatState {
   sessions: ChatSession[];
@@ -24,6 +25,10 @@ function activeSession(s: { sessions: ChatSession[]; activeId: string | null }):
     createdAt: new Date().toISOString(),
   };
   return fresh;
+}
+
+function persistSession(session: ChatSession): void {
+  syncChatSession(session.id, session.title, session.messages);
 }
 
 export const useChatStore = create<ChatState>()(
@@ -63,6 +68,7 @@ export const useChatStore = create<ChatState>()(
               ? content.slice(0, 40) || current.title
               : current.title;
           const updated = { ...current, title, messages: [...current.messages, msg] };
+          persistSession(updated);
           return {
             sessions: [updated, ...s.sessions.filter((x) => x.id !== current.id)],
             activeId: updated.id,
@@ -80,6 +86,7 @@ export const useChatStore = create<ChatState>()(
             createdAt: new Date().toISOString(),
           };
           const updated = { ...current, messages: [...current.messages, msg] };
+          persistSession(updated);
           return {
             sessions: [updated, ...s.sessions.filter((x) => x.id !== current.id)],
             activeId: updated.id,

@@ -79,6 +79,21 @@ export const TOOL_SCHEMAS: ORToolSchema[] = [
   {
     type: 'function',
     function: {
+      name: 'search_knowledge',
+      description:
+        'Cari di basis pengetahuan budidaya (teknik tanam, pemupukan menurut umur, hama/penyakit per komoditas, PHT, keselamatan pestisida). WAJIB dipakai untuk pertanyaan cara budidaya, gejala penyakit/hama, dan jadwal pemupukan.',
+      parameters: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query: { type: 'string', description: 'Kata kunci pencarian dalam bahasa Indonesia' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'activity_log',
       description: 'Catat aktivitas budidaya pengguna (tanam, pemupukan, penyemprotan, panen, dll).',
       parameters: {
@@ -98,7 +113,7 @@ export const TOOL_SCHEMAS: ORToolSchema[] = [
   },
 ];
 
-export const PROMPT_TOOL_DIRECTIVE = `Anda memiliki akses tools berikut: get_weather, fertilizer_calculator, pesticide_calculator, product_search, farm_context, activity_log.
+export const PROMPT_TOOL_DIRECTIVE = `Anda memiliki akses tools berikut: get_weather, fertilizer_calculator, pesticide_calculator, product_search, farm_context, search_knowledge, activity_log.
 Bila perlu menggunakan sebuah tool, balas HANYA satu baris JSON tanpa teks lain:
 {"tool": "nama_tool", "arguments": {...}}
 Setelah menerima [TOOL_RESULT ...], lanjutkan menjawab pengguna dengan bahasa Indonesia.

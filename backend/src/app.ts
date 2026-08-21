@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { aiRouter } from './routes/ai.routes';
 import { productsRouter } from './routes/products.routes';
+import { chatRouter } from './routes/chat.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 export function createApp(): express.Express {
@@ -20,6 +21,7 @@ export function createApp(): express.Express {
   app.use('/ai', aiRouter);
   app.use('/api/ai', aiRouter);
   app.use('/api/products', productsRouter);
+  app.use('/api/chat', chatRouter);
 
   app.use(errorHandler);
   return app;

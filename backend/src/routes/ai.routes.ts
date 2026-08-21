@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { hasApiKey } from '../config';
+import { config, hasApiKey } from '../config';
 import { runAgent } from '../services/agent';
 import { visionCompletion } from '../services/openrouter';
+import { logAiQuery } from '../store/knowledge';
+import { userFromHeader } from '../middleware/supabaseUser';
 import { ChatMessageIn, ToolContext } from '../types';
 import { aiLimiter } from '../middleware/rateLimit';
 
@@ -24,6 +26,14 @@ aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
     const started = Date.now();
     const { reply, iterations } = await runAgent(messages, context ?? {});
     console.log(`[ai/chat] iter=${iterations} ms=${Date.now() - started}`);
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+    const sbUser = await userFromHeader(req).catch(() => null);
+    logAiQuery({
+      userId: sbUser?.id ?? null,
+      question: lastUser?.content ?? '(kosong)',
+      iterations,
+      model: process.env.OPENROUTER_MODEL ?? 'default',
+    }).catch(() => undefined);
     res.json({ reply });
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });
