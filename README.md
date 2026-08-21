@@ -19,7 +19,7 @@ Aplikasi mobile berbahasa Indonesia untuk membantu petani mengelola budidaya: AI
 | Lahan & Tanaman | ✅ | Profil lahan, jenis/varietas, tanggal tanam, fase pertumbuhan → konteks AI. |
 | Aktivitas & Reminder | ✅ | Jadwal budidaya (tanam/pemupukan/penyemprotan/panen/dll.) dengan **pengingat notifikasi lokal**, tampil di Beranda. |
 | Riwayat | ✅ | Simpan hasil kalkulasi (pupuk, pestisida, grid, konversi) + metode aplikasi. |
-| Auth | ✅ | Login & signup lokal (demo). Siap diganti Supabase/Firebase Auth. |
+| Auth | ✅ | Login & signup via **Supabase Auth** (verifikasi email, sesi tersimpan otomatis). Konfigurasi via `.env` (`EXPO_PUBLIC_SUPABASE_URL/ANON_KEY`). |
 | Build APK | ✅ | Konfigurasi `eas.json` siap `eas build -p android --profile preview`. |
 
 ## 🔒 Prinsip Keselamatan

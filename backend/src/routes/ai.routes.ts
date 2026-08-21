@@ -3,12 +3,9 @@ import { hasApiKey } from '../config';
 import { runAgent } from '../services/agent';
 import { visionCompletion } from '../services/openrouter';
 import { ChatMessageIn, ToolContext } from '../types';
-import { optionalAuth } from '../middleware/auth';
 import { aiLimiter } from '../middleware/rateLimit';
 
 export const aiRouter = Router();
-
-aiRouter.use(optionalAuth);
 
 aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
   try {
@@ -26,9 +23,7 @@ aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
     }
     const started = Date.now();
     const { reply, iterations } = await runAgent(messages, context ?? {});
-    console.log(
-      `[ai/chat] user=${req.user?.sub ?? 'anon'} iter=${iterations} ms=${Date.now() - started}`
-    );
+    console.log(`[ai/chat] iter=${iterations} ms=${Date.now() - started}`);
     res.json({ reply });
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });

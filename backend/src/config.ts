@@ -6,6 +6,10 @@ function env(key: string, fallback = ''): string {
 
 export const config = {
   port: Number(env('PORT', '3000')),
+  supabase: {
+    url: env('SUPABASE_URL'),
+    serviceRoleKey: env('SUPABASE_SERVICE_ROLE_KEY'),
+  },
   openrouter: {
     apiKey: env('OPENROUTER_API_KEY'),
     baseUrl: 'https://openrouter.ai/api/v1',
@@ -19,11 +23,13 @@ export const config = {
       .map((m) => m.trim())
       .filter(Boolean),
   },
-  jwtSecret: env('JWT_SECRET', 'dev-secret-change-me'),
   adminToken: env('ADMIN_TOKEN', 'dev-admin-token'),
-  dataDir: env('DATA_DIR', 'data'),
 };
 
 export function hasApiKey(): boolean {
   return config.openrouter.apiKey.length > 0;
+}
+
+export function hasSupabase(): boolean {
+  return Boolean(config.supabase.url && config.supabase.serviceRoleKey);
 }

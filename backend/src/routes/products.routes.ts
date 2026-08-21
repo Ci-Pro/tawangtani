@@ -1,14 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { config } from '../config';
-import { loadCatalog, saveCatalog } from '../store/catalog';
+import { loadCatalog, saveCatalog, logAudit } from '../store/catalog';
 
 export const productsRouter = Router();
 
-productsRouter.get('/', (_req: Request, res: Response) => {
-  res.json({ products: loadCatalog() });
+productsRouter.get('/', async (_req: Request, res: Response) => {
+  try {
+    const products = await loadCatalog();
+    res.json({ products });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });
 
-productsRouter.put('/', (req: Request, res: Response) => {
+productsRouter.put('/', async (req: Request, res: Response) => {
   const token = req.headers['x-admin-token'];
   if (token !== config.adminToken) {
     res.status(403).json({ error: 'Admin token tidak valid' });
@@ -19,6 +24,10 @@ productsRouter.put('/', (req: Request, res: Response) => {
     res.status(400).json({ error: 'products harus array tidak kosong' });
     return;
   }
-  saveCatalog(products, String(req.user?.sub ?? 'admin'));
-  res.json({ ok: true, count: products.length });
+  try {
+    const count = await saveCatalog(products as Array<Record<string, unknown>>, 'admin');
+    res.json({ ok: true, count });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });

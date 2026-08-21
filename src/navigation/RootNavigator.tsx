@@ -77,7 +77,15 @@ const MainTabs: React.FC = () => {
 
 const RootNavigator: React.FC = () => {
   const user = useAuthStore((s) => s.user);
+  const ready = useAuthStore((s) => s.ready);
+  const init = useAuthStore((s) => s.init);
   const { navTheme } = useTheme();
+
+  React.useEffect(() => {
+    init();
+  }, [init]);
+
+  if (!ready) return null;
 
   return (
     <NavigationContainer theme={navTheme}>

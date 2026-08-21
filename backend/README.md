@@ -18,11 +18,12 @@ Backend Express + TypeScript untuk aplikasi TAWANGTANI. Proxy AI via **OpenRoute
 - **API key LLM hanya di server** — tidak pernah dikirim ke APK.
 - Rate limit `/ai/*`: 30 permintaan / 15 menit / IP.
 - Model tidak boleh mengarang dosis: tool `product_search` hanya membaca katalog; jawaban selalu mengingatkan label resmi.
+- Auth ditangani **Supabase Auth** (bcrypt, refresh token, verifikasi email bawaan). Backend hanya memakai service role key untuk katalog & audit.
 
 ## Menjalankan
 
 ```bash
-cp .env.example .env        # isi OPENROUTER_API_KEY dari https://openrouter.ai/keys (gratis)
+cp .env.example .env        # isi SUPABASE_*, OPENROUTER_API_KEY, ADMIN_TOKEN
 npm install
 npm run dev                 # development (tsx watch)
 # atau
@@ -30,6 +31,26 @@ npm run build && npm start  # production
 ```
 
 Server jalan di `http://localhost:3000`.
+
+## Deploy ke Vercel + Supabase (gratis)
+
+1. **Supabase**: buat project di https://supabase.com → SQL Editor → tempel isi [`supabase/schema.sql`](../supabase/schema.sql) → Run.
+2. **Vercel**: import repo GitHub, set **Root Directory = `backend`**.
+3. Set Environment Variables (Project Settings → Environment Variables):
+
+   | Key | Sumber nilai |
+   |---|---|
+   | `SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API → service_role key (rahasia!) |
+   | `OPENROUTER_API_KEY` | https://openrouter.ai/keys |
+   | `ADMIN_TOKEN` | string acak pilihan Anda |
+
+4. Deploy → dapat URL seperti `https://tawangtani.vercel.app`.
+5. Di aplikasi: **Profil → URL Backend** isi URL Vercel tersebut.
+
+Endpoint tetap sama: `/ai/chat`, `/ai/vision`, `/ai/status`, `/api/products`, `/health`.
+
+> Catatan: rate limit bawaan bersifat per-instance serverless. Untuk pembatasan ketat lintas-instance, hubungkan Upstash Redis (gratis) nanti.
 
 ## Model gratis (OpenRouter)
 
@@ -45,7 +66,9 @@ Bila model utama penuh/rate-limited, backend otomatis mencoba model cadangan. Ji
 
 ## Integrasi aplikasi mobile
 
-Di aplikasi: **Profil → URL Backend** isi misalnya `http://192.168.1.10:3000`. Tani AI otomatis memakai server ini (mode online); bila tidak terjangkau, fallback ke mode offline lokal.
+1. Salin `.env.example` di root repo → `.env`, isi `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_ANON_KEY` (anon key aman untuk APK, dilindungi RLS).
+2. Login/Signup otomatis memakai Supabase Auth.
+3. Untuk AI online: **Profil → URL Backend** isi URL Vercel/server; tanpa itu aplikasi tetap jalan mode offline lokal.
 
 Kontrak `/ai/chat`:
 ```jsonc
