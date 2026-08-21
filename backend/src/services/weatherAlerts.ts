@@ -23,7 +23,10 @@ export async function fetchWeatherAlerts(lat: number, lon: number): Promise<Weat
     forecast_days: '3',
   });
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
-  if (!res.ok) throw new Error(`Gagal mengambil prakiraan cuaca (HTTP ${res.status})`);
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Gagal mengambil prakiraan cuaca (HTTP ${res.status}) ${detail.slice(0, 200)}`);
+  }
   const json = (await res.json()) as { daily?: { time: string[] } & Record<string, DailyItem[] | string[]> };
   const d = json.daily as unknown as {
     time: string[];
