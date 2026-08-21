@@ -232,6 +232,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#ffffff',
   },
+  weatherMain: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
   weatherDesc: {
     fontSize: 15,
     fontWeight: '600',

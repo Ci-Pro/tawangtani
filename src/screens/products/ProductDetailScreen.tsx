@@ -1,14 +1,17 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Card, SectionHeader } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useProductStore } from '@/store/useProductStore';
 import { fmtDateTime } from '@/utils/format';
+import { RootProps } from '@/navigation/types';
 
-const ProductDetailScreen: React.FC<{ productId: string }> = ({ productId }) => {
+const ProductDetailScreen: React.FC<RootProps<'ProductDetail'>> = ({ route }) => {
   const { palette } = useTheme();
+  const productId = route.params.productId;
   const product = useProductStore((s) => s.products.find((p) => p.id === productId));
   const audits = useProductStore((s) =>
     s.audits.filter((a) => a.productId === productId || a.productId === '*')

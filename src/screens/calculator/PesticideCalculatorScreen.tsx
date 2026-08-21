@@ -45,6 +45,11 @@ const PesticideCalculatorScreen: React.FC = () => {
   const products = useProductStore((s) => s.products);
   const farms = useFarmStore((s) => s.farms);
 
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [selected, setSelected] = useState<Product | null>(null);
+  const [selectedDose, setSelectedDose] = useState<ProductDose | null>(null);
+
   const pesticides = useMemo(() => {
     const q = pickerQuery.toLowerCase().trim();
     return products.filter((p) => {
@@ -61,11 +66,6 @@ const PesticideCalculatorScreen: React.FC = () => {
       );
     });
   }, [products, pickerQuery]);
-
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerQuery, setPickerQuery] = useState('');
-  const [selected, setSelected] = useState<Product | null>(null);
-  const [selectedDose, setSelectedDose] = useState<ProductDose | null>(null);
 
   const [dose, setDose] = useState('');
   const [doseUnit, setDoseUnit] = useState<PesticideDoseUnit>('mL/L');

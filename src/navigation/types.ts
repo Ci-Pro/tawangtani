@@ -2,6 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 export type RootStackParamList = {
   Auth: undefined;
+  Signup: undefined;
   Main: undefined;
   WeatherDetail: undefined;
   ProductList: { category?: 'pupuk' | 'pestisida' } | undefined;

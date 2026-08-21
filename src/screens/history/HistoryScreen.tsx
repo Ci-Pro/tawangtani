@@ -13,6 +13,7 @@ const TYPE_META: Record<HistoryType, { icon: keyof typeof Ionicons.glyphMap; lab
   fertilizer: { icon: 'nutrition', label: 'Pupuk' },
   pesticide: { icon: 'flask', label: 'Pestisida' },
   conversion: { icon: 'swap-horizontal', label: 'Konversi' },
+  grid: { icon: 'grid', label: 'Grid' },
 };
 
 const HistoryScreen: React.FC = () => {
