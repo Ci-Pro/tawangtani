@@ -18,7 +18,15 @@ interface WeatherCurrent {
   wind_speed_10m: number;
 }
 
+// Cache cuaca sederhana agar chat beruntun tidak menghantam Open-Meteo
+const weatherCache = new Map<string, { at: number; data: ToolResult }>();
+const WEATHER_TTL_MS = 10 * 60 * 1000;
+
 async function weatherSummary(lat: number, lon: number, locationName?: string): Promise<ToolResult> {
+  const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+  const hit = weatherCache.get(key);
+  if (hit && Date.now() - hit.at < WEATHER_TTL_MS) return hit.data;
+
   const params = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
@@ -54,12 +62,18 @@ async function weatherSummary(lat: number, lon: number, locationName?: string): 
   }
   if (reasons.length === 0) reasons.push('kondisi mendukung penyemprotan');
 
-  return {
+  const result: ToolResult = {
     summary:
       `Cuaca di ${locationName || 'lokasi pengguna'}: ${c.temperature_2m}°C, ` +
       `kelembapan ${c.relative_humidity_2m}%, hujan ${c.precipitation} mm, angin ${c.wind_speed_10m} km/jam. ` +
       `Kondisi semprot: ${level} (${reasons.join('; ')}).`,
   };
+  weatherCache.set(key, { at: Date.now(), data: result });
+  if (weatherCache.size > 50) {
+    const oldest = weatherCache.keys().next().value;
+    if (oldest) weatherCache.delete(oldest);
+  }
+  return result;
 }
 
 export async function executeTool(
@@ -228,10 +242,28 @@ export async function executeTool(
         };
       }
       const views = rows.map(toView);
+      // Tren 7 hari otomatis bila komoditas spesifik diminta
+      let trendLine = '';
+      if (commodity) {
+        try {
+          const { buckets } = await getSeries(commodity, 'daily', province ?? 'nasional');
+          if (buckets.length >= 8) {
+            const now = buckets[buckets.length - 1].close;
+            const weekAgo = buckets[buckets.length - 8].close;
+            if (weekAgo > 0) {
+              const d = Math.round(((now - weekAgo) / weekAgo) * 1000) / 10;
+              trendLine = `\nTren 7 hari terakhir: ${d >= 0 ? '+' : ''}${d}% (${d >= 0 ? 'cenderung naik' : 'cenderung turun'}). Untuk pertanyaan kapan jual, panggil market_price dengan range=weekly sebelum menyimpulkan.`;
+            }
+          }
+        } catch {
+          // tren opsional
+        }
+      }
       return {
-        summary: views
-          .map((v) => `${guidanceFor(v)} (Sumber: ${v.source}; diperbarui ${v.updatedAt.slice(0, 10)})`)
-          .join('\n'),
+        summary:
+          views
+            .map((v) => `${guidanceFor(v)} (Sumber: ${v.source}; diperbarui ${v.updatedAt.slice(0, 10)})`)
+            .join('\n') + trendLine,
       };
     }
 

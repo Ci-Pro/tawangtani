@@ -172,6 +172,193 @@
           "source": "Prinsip pemupukan berbasis uji tanah (Balitbangtan)"
         }
       ]
+    },
+    {
+      "id": "kb-tomat-budidaya",
+      "title": "Panduan Budidaya Tomat",
+      "description": "Budidaya tomat: ajir dan pangkas sulur, pemupukan berimbang, layu dan antraknosa, panen bertahap.",
+      "chunks": [
+        {
+          "crop": "tomat",
+          "topic": "budidaya",
+          "content": "Semai tomat 25-30 hari hingga bibit 10-15 cm dengan 4-5 daun sebelum dipindah. Jarak tanam umum 50x60 cm atau 40x60 cm. Pasang ajir/trellis saat tanam agar sulur tidak rebah; ikat batang bertahap seiring tumbuh. Pangkas sulur (anak tunas di ketiak daun) tiap 3-4 hari pagi hari agar hara fokus ke buah dan tajuk terbuka (lembab rendah, jamur tertekan). Gunakan mulsa jerami atau plastik perak-hitam untuk menjaga lembab dan menekan gulma.",
+          "source": "Rekomendasi umum budidaya tomat Balitbangtan"
+        },
+        {
+          "crop": "tomat",
+          "topic": "pemupukan",
+          "content": "Pemupukan tomat: pupuk kandang matang 10-15 ton/ha sebagai dasar ditambah SP-36 150-200 kg/ha dan KCl 75-100 kg/ha saat olah tanah. Urea diberikan susulan 50-75 kg/ha setiap 10-14 hari mulai umur 10 hst, dihentikan mendekati panen. Saat pembuahan dan pembesaran buah, naikkan porsi kalium (KCl atau pupuk daun tinggi K) agar buah padat, manis, dan kuat; kekurangan K memicu bunga/buah gugur. Jangan berlebihan nitrogen fase awal - vegetatif raksasa, buah sedikit.",
+          "source": "Rekomendasi teknis budidaya tomat; sesuaikan uji tanah lokal"
+        },
+        {
+          "crop": "tomat",
+          "topic": "hama_penyakit",
+          "content": "Layu pada tomat ada dua jenis utama: fusarium (layu sepihak, jalinan miselium merah muda di batang) dan bakteri Ralstonia (layu cepat, getah putih keruh bila batang dibelah, akar busuk). Pencegahan lebih murah daripada mengobati: rotasi tanaman bukan solanaceae 2-3 musim, drainase baik, dolomit bila asam, dan varietas tahan. Tanaman terserang bakteri dicabut dan dibakar; lubang disiram kapur. Fungisida hanya efektif untuk layu fusarium tahap awal, bukan bakteri.",
+          "source": "Pedoman pengendalian OPT hortikultura; konfirmasi ke PPL"
+        },
+        {
+          "crop": "tomat",
+          "topic": "hama_penyakit",
+          "content": "Ulat buah tomat (Helicoverpa armigera) menusuk dan menggerogoti buah sehingga busuk jatuh. Kendalikan terpadu: pasang perangkap feromon 1-2 per hektare untuk pantau dan tangkap ngengat, inspeksi buah rutin, semprot insektisida biologis (Bt) atau bahan aktif selektif sore hari saat larva masih kecil. Antraknosa membuat bercak cekung gelap pada buah masak - mulsa mencegah percikan tanah, pangkas daun bawah, dan gunakan fungisida saat musim hujan/lembap. Kutu daun dan thrips dikendalikan kuning lengket dan semprotan sabun kalium/insektisida selektif bila padat.",
+          "source": "PHT hortikultura (Balitbangtan); ikuti label produk"
+        },
+        {
+          "crop": "tomat",
+          "topic": "panen",
+          "content": "Tomat siap panen pertama umumnya 60-75 hari setelah tanam, lalu petik berkala setiap 2-3 hari selama 3-4 minggu. Tingkat petik sesuai pasar: hijau penuh (breaker) untuk angkut jauh, warna oranye untuk pasar dekat, merah penuh untuk jual langsung. Petik pagi hari dengan gunting, sisakan 1-2 cm tangkai agar tidak jadi pintu masuk busuk. Sortasi langsung di lahan: pisahkan buah cacat/terserang agar tidak menulari yang sehat; kemas dalam krat berventilasi maksimal 3-4 susun agar tidak remuk.",
+          "source": "SOP panen hortikultura (Balai Post Harvest); sesuaikan permintaan pengepul"
+        }
+      ]
+    },
+    {
+      "id": "kb-kentang-budidaya",
+      "title": "Panduan Budidaya Kentang",
+      "description": "Budidaya kentang dataran tinggi: bibit bersertifikat, penggemburan, hawar daun, panen.",
+      "chunks": [
+        {
+          "crop": "kentang",
+          "topic": "budidaya",
+          "content": "Kentang butuh suhu malam sejuk (dataran tinggi 1000-1500 mdpl). Gunakan umbi bibit bersertifikat (G2/G3) berumur 2-3 bulan dan bertunas 5-15 mm; umbi bibit sendiri turun-turunan rentan virus (daun keriting, kerdil) dan hasil turun drastis. Tanam di bedengan jarak 60-70 cm antar baris, 20-25 cm dalam baris, kedalaman 8-10 cm. Lakukan penggemburan (menutup pangkal tanaman dengan tanah) dua kali: umur 2-3 minggu dan 5-6 minggu - mencegah umbi kelihat matahari menjadi hijau dan racun solanin serta memberi ruang umbi membentuk.",
+          "source": "Rekomendasi budidaya kentang Balitbangtan/BPTPH"
+        },
+        {
+          "crop": "kentang",
+          "topic": "pemupukan",
+          "content": "Pemupukan kentang: pupuk kandang 15-20 ton/ha dasar. Pupuk kimia umumnya NPK (mis. 15-15-15) 400-600 kg/ha saat tanam ditambah Urea 100-150 kg/ha dibagi dua: sepertiga saat tanam dan sisanya menjelang penggemburan kedua. Kalium penting untuk ukuran dan kualitas umbi - bila analisis tanah rendah K tambahkan KCl 100-150 kg/ha. Hindari nitrogen berlebih setelah fase pembungaan karena menunda pembesaran umbi dan mendorong daun lebat penyakit.",
+          "source": "Rekomendasi teknis kentang; sesuaikan hasil uji tanah"
+        },
+        {
+          "crop": "kentang",
+          "topic": "hama_penyakit",
+          "content": "Hawar daun (late blight, Phytophthora infestans) adalah musuh nomor satu kentang: bercak basah coklat gelap dengan lingkaran putih spora di bawah daun, menyebar kilat saat kabut/hujan dan malam dingin lembap. Protokol: fungisida preventif kontak (mancozeb) rutin 5-7 hari sekali saat cuaca lembap, naikkan ke sistemik (mis. cymoxanil+mancozeb, metalaksil) saat gejala muncul, dan rotasi mode aksi. Kutu daun adalah vektor virus - kendalikan sejak awal dengan mulsa perak dan insektisida selektif. Pengorok daun menyebabkan jalur putih di daun; pangkas dan musnahkan daun sakit.",
+          "source": "Pedoman OPT kentang (Balai Perlindungan Hortikultura)"
+        },
+        {
+          "crop": "kentang",
+          "topic": "panen",
+          "content": "Kentang siap panen 90-120 hari setelah tanam tergantung varietas, tandanya pucuk dan daun menguning lalu mengering secara alami. Bila akan dijual segar, potong pucuk 7-10 hari sebelum panen agar kulit umbi menebal (tahan luka, awet). Galil hati-hati dari sisi bedengan agar umbi tidak terluka; biarkan 1-2 jam di tempat teduh berventilasi agar kulit kering - jangan jemur di bawah matahari langsung. Sortasi grade: besar (lebih dari 60 gram), sedang, kecil/bibit; pisahkan umbi hijau dan terluka. Simpan di ruang gelap sejuk berventilasi; paparan cahaya membuat kulit hijau beracun solanin.",
+          "source": "SOP panen kentang (Balai Post Harvest)"
+        }
+      ]
+    },
+    {
+      "id": "kb-wortel-budidaya",
+      "title": "Panduan Budidaya Wortel",
+      "description": "Budidaya wortel dataran tinggi: tanah gembur, bedeng, karat daun, panen dan grading.",
+      "chunks": [
+        {
+          "crop": "wortel",
+          "topic": "budidaya",
+          "content": "Wortel butuh tanah gembur, dalam, dan bebas batu (lempung berpasir) hingga kedalaman 30 cm agar akar lurus tidak bercabang; tanah padat menghasilkan akar bengkok pendek. Buat bedeng tinggi 25-30 cm lebar 100-120 cm dengan alur drainase. Semai langsung: campur benih halus dengan pasir halus atau tanah, tabur dalam alur dangkal 0,5-1 cm, tutup tipis dan siram halus. Berkecambah 10-14 hari. Jarangkan tanaman menjadi 5-8 cm antar tanaman pada umur 2-3 minggu - tahap ini menentukan ukuran akar.",
+          "source": "Rekomendasi budidaya wortel Balitbangtan"
+        },
+        {
+          "crop": "wortel",
+          "topic": "pemupukan",
+          "content": "Pemupukan wortel: pupuk kandang matang 15-20 ton/ha (kandang segar membuat akar bercabang aneh). Dasar NPK seimbang atau SP-36+KCl saat bedeng. Susulan Urea ringan 25-50 kg/ha pada umur 3 dan 6 minggu. Air harus konsisten: lahan bergantian kering-lalu-tergenang membuat akar retak dan pecah; kemarau gunakan siraman 2-3 hari sekali, musim hujan pastikan drainase cepat. Kalium cukup membuat akar manis dan padat.",
+          "source": "Rekomendasi teknis wortel; sesuaikan uji tanah"
+        },
+        {
+          "crop": "wortel",
+          "topic": "panen",
+          "content": "Penyakit utama wortel adalah karat daun (bercak coklat kemerahan melebar saat lembap) - atur jarak dan gunakan fungisida saat serangan menyebar. Lalat wortel menusuk akar muda meninggalkan terowongan; mulsa tipis di pangkal dan rotasi lokasi membantu. Panen pada umur 80-100 hari saat daun mulai menguning dan pangkal akar menonjol di atas tanah sebesar ujung pensil ke atas. Gali atau cabut pelan-pelan pagi hari; cuci lumpur segera lalu grading: panjang 15 cm ke atas grade A tanpa pecah/cabang. Buang daun 2 cm di atas kepala agar air tidak terperangkap dan busuk saat disimpan.",
+          "source": "SOP panen wortel; pedoman OPT sayuran dataran tinggi"
+        }
+      ]
+    },
+    {
+      "id": "kb-kol-budidaya",
+      "title": "Panduan Budidaya Kol/Kubis",
+      "description": "Budidaya kol: semai dan jarak, pemupukan kepalan, ulat krop, panen.",
+      "chunks": [
+        {
+          "crop": "kol",
+          "topic": "budidaya",
+          "content": "Kol disemai di persemaian 21-30 hari hingga punya 4-6 daun sebelum dipindah. Jarak tanam 50x50 cm. Tanam awal musim hujan agar kepala terbentuk saat udara sejuk. Siram cukup dan gunakan mulsa jerami/plastik untuk stabilkan lembab; kekurangan air saat pembentukan kepala membuat kepala pecah atau longgar. Rotasi dengan tanaman non-brassica 2-3 musim mencegah penumpukan penyakit tanah.",
+          "source": "Rekomendasi budidaya kol Balitbangtan"
+        },
+        {
+          "crop": "kol",
+          "topic": "pemupukan",
+          "content": "Pemupukan kol: pupuk kandang 10-15 ton/ha dasar. Pupuk NPK dasar 300-400 kg/ha saat tanam. Urea susulan 50-75 kg/ha sebanyak 2-3 kali (umur 2, 4, dan 6 minggu) disebar di sekitar pangkal lalu disiram. Kalium cukup (KCl 100-150 kg/ha bila tanah miskin K) membuat kepala padat dan awet. Hentikan nitrogen saat kepala mulai padat rapat agar tidak pecah dan penyakit daun tidak meledak.",
+          "source": "Rekomendasi teknis kol; sesuaikan uji tanah"
+        },
+        {
+          "crop": "kol",
+          "topic": "panen",
+          "content": "Musuh terbesar kol adalah ulat krop (Plutella xylostella): larva hijau kecil menggerogoti daun dari bawah sampai seperti jala. Terpadu: perangkap feromon untuk pantau, semprot Bacillus thuringiensis (Bt) sore hari karena ulat makan malam, rotasi mode aksi tiap 2 aplikasi karena ulat krop cepat kebal. Ulat grayak dan penghisap juga menyerang - inspeksi balik daun rutin tiap 2-3 hari. Layu hitam (black rot) berupa vena menghitam V-shaped: pakai benih bersertifikat dan hindari siram dari atas. Panen 70-100 hari saat kepala padat keras sebesar kepalan tangan dewasa ke atas; potong pangkal dengan pisau tajam, buang daun luar berlubang, sisakan 2-3 daun pembungkus pelindung.",
+          "source": "PHT brassica (Balitbangtan); SOP panen sayuran"
+        }
+      ]
+    },
+    {
+      "id": "kb-panen-pascapanen",
+      "title": "SOP Panen dan Pasca Panen",
+      "description": "Indikator siap panen semua komoditas, teknik petik, sortasi grading, penyimpanan, strategi jual.",
+      "chunks": [
+        {
+          "crop": "umum",
+          "topic": "panen",
+          "content": "Indikator siap panen: padi - 90-95% gabah kuning, kadar air 21-26%, umur 110-135 hst tergantung varietas. Jagung - kelobot kering kecoklatan, biji mengkilap keras, kadar air sekitar 30%. Cabai - merah penuh (cabai merah) atau hijau tua mengilap (untuk cabai segar), umur 70-90 hst. Bawang merah - 60-70% daun roboh dan leher bawah lunak, umbi padat, 70-90 hst. Tomat - warna sesuai target pasar (breaker sampai merah). Kentang - pucuk kering alami, 90-120 hst. Wortel - daun menguning, pangkal akar menonjol. Kol - kepala padat keras. Panen terlalu muda = hasil rendah dan cepat busuk; terlalu tua = pecah/rontok dan harga turun.",
+          "source": "Standar panen komoditas (Balai Post Harvest / Balitbangtan)"
+        },
+        {
+          "crop": "umum",
+          "topic": "panen",
+          "content": "Teknik panen yang menjaga mutu: kerjakan pagi hari (suhu rendah, jaringan segar) kecuali bawang yang boleh siang cerah. Gunakan alat tajam bersih (gunting, sabit, pisau) - jangan ditarik paksa karena meluka tanaman dan produk. Wadah krat plastik/kucing berventilasi, jangan karung rapat untuk produk segar karena panas respirasi memicu busuk. Jangan melempar atau menginjak wadah. Setelah panen, produk segar segera dipindah ke tempat teduh sejuk - matahari langsung 2 jam saja sudah menurunkan bobot dan daya tahan.",
+          "source": "SOP panen hortikultura (Balai Post Harvest)"
+        },
+        {
+          "crop": "umum",
+          "topic": "pascapanen",
+          "content": "Sortasi dan grading menaikkan harga nyata: pisahkan grade A (utuh, seragam, bersih), grade B (cacat ringan), dan rusak (busuk/luka dalam - pisahkan segera agar tidak menular). Grading A bisa 20-40% lebih mahal. Penyimpanan singkat: bawang merah - keringkan jemur 3-7 hari hingga daun dan leher kering, simpan di rak berventilasi, tahan 2-3 bulan. Kentang - ruang gelap sejuk berventilasi, hindari lampu (kulit hijau beracun). Cabai segar dan tomat - sejuk teduh, jangan tumpuk tebal; tomat tidak tahan pendingin ekstrem. Beras/gabah - keringkan hingga kadar air 14% sebelum simpan/jual. Prinsip FIFO: yang lama jual duluan.",
+          "source": "Pedoman penanganan pascapanen (Balai Post Harvest)"
+        },
+        {
+          "crop": "umum",
+          "topic": "strategi_jual",
+          "content": "Strategi memaksimalkan nilai panen: (1) Pantau tren harga mingguan sebelum panen - jika tren naik dan produk bisa disimpan (bawang, kentang, gabah), tunda jual 1-2 minggu; jika turun dan produk segar cepat rusak (cabai, tomat), segera jual. (2) Jual bertahap, jangan habis sekali jual di harga rendah. (3) Agregasi: gabung panen kelompok tani agar volume layak dijual ke penampung/pasar induk dengan harga lebih baik. (4) Catat biaya produksi (bibit, pupuk, pestisida, tenaga) agar tahu titik untung. (5) Cek kelayakan pengepul: timbang sendiri, pahami potongan kadar air/susut. (6) Pertahankan relasi pembeli tetap sebelum musim panen puncak.",
+          "source": "Praktik pemasaran tani (Dinas Pertanian/PPL); gunakan fitur harga pasar TAWANGTANI untuk tren"
+        }
+      ]
+    },
+    {
+      "id": "kb-air-irigasi",
+      "title": "Manajemen Air dan Irigasi",
+      "description": "Kebutuhan air per fase, teknik penyiraman, drainase musim hujan, mulsa.",
+      "chunks": [
+        {
+          "crop": "umum",
+          "topic": "irigasi",
+          "content": "Kebutuhan air hortikultura sekitar 4-6 mm per hari saat kemarau (cabai, tomat, kol). Fase paling kritis kekurangan air: pembungaan dan pembesaran buah/umbi - gagal air di fase ini langsung memotong hasil. Siram pagi hari agar daun kering sebelum senja (daun basah semalaman = undangan jamur). Arahkan air ke zona akar, jangan menyembur daun. Selang tetes atau sumur resapan menghemat air 30-60% dibanding penyiraman banjir dan menjaga lembab konsisten yang mencegah buah pecah (tomat) dan retak (wortel).",
+          "source": "Manajemen air hortikultura (Balitbangtan)"
+        },
+        {
+          "crop": "umum",
+          "topic": "irigasi",
+          "content": "Drainase sama pentingnya dengan irigasi: genangan lebih dari 12 jam mematikan akar mayoritas tanaman hortikultura dan memicu layu bakteri. Sebelum musim hujan buka alur drainase 30-40 cm setiap 1-2 bedeng menuju saluran utama. Mulsa plastik hitam perak: menekan gulma hingga 90%, menjaga lembab tanah stabil, memantulkan cahaya yang mengusir kutu daun/thrips, dan melindungi tanah dari hantaman hujan. Pasang mulsa saat tanah lembab lalu tutup tepinya rapat dengan tanah. Lubangi mulsa tepat di posisi tanam, bukan luas, agar air masuk ke akar.",
+          "source": "Teknologi mulsa dan drainase (Balitbangtan)"
+        }
+      ]
+    },
+    {
+      "id": "kb-diagnosa-hara",
+      "title": "Diagnosa Gejala Hara dan Praktik Aplikasi",
+      "description": "Membaca gejala defisiensi NPK/Ca/Mg dari daun, urutan pencampuran, keselamatan aplikasi.",
+      "chunks": [
+        {
+          "crop": "umum",
+          "topic": "diagnosa_hara",
+          "content": "Cara cepat membaca gejala hara: Nitrogen kurang - daun tua/bawah menguning seragam seluruh helai, tanaman kerdil. Fosfor kurang - daun keunguan/kemerahan, pertumbuhan lambat, akar pendek. Kalium kurang - tepi daun tua kering seperti terbakar, batang lemah. Kalsium kurang - ujung buah busuk hitam (blossom-end rot pada tomat/cabai), daun muda keriting; perbaiki dengan dolomit/gypsum dan air konsisten, bukan sekadar pupuk. Magnesium kurang - daun tua kuning di antara tulang daun tapi tulang tetap hijau. Ingat: gejala mirip bisa juga penyakit akar/air - cek dulu akar dan kondisi drainase sebelum menambah pupuk.",
+          "source": "Diagnosa defisiensi hara (Balitbangtan/IPB)"
+        },
+        {
+          "crop": "umum",
+          "topic": "keselamatan",
+          "content": "Praktik aman pencampuran dan aplikasi: uji kompatibilitas dulu di segelas air bila mencampur dua produk (endapan/menggumpal = jangan dicampur). Urutan pencampuran tangki: isi setengah air, masukkan WP (bubuk kemas basah), lalu EC (cair), SC (suspen), terakhir WSL/SL (larut air) sambil diaduk. Kenakan masker, sarung tangan, dan baju lengan panjang saat takar dan tuang; jangan semprot melawan arah angin; cuci alat dan mandi segera setelah aplikasi. Simpan pestisida terkunci jauh dari pangan dan pakan, jauh dari jangkauan anak. Kemasan kosong dibilas tiga kali dan ditusuk, jangan dipakai ulang.",
+          "source": "Keselamatan pestisida (Komisi Pestisida Kementan)"
+        }
+      ]
     }
   ]
 }

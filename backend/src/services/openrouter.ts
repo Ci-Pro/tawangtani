@@ -64,7 +64,7 @@ async function callOnce(
         messages,
         ...(tools && tools.length ? { tools, tool_choice: 'auto' } : {}),
         temperature: 0.3,
-        max_tokens: 1024,
+        max_tokens: 1400,
       }),
       signal: controller.signal,
     });
