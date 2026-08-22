@@ -64,7 +64,7 @@ export async function saveCatalog(
     name: String(p.name ?? ''),
     category: String(p.category ?? 'lainnya'),
     formulation: String(p.formulation ?? ''),
-    activeIngredient: String(p.activeIngredient ?? p.active_ingredient ?? ''),
+    active_ingredient: String(p.activeIngredient ?? p.active_ingredient ?? ''),
     doses: (p.doses as Array<Record<string, unknown>>) ?? [],
     warnings: (p.warnings as Record<string, unknown>) ?? null,
     source: String(p.source ?? `admin:${actor}`),
