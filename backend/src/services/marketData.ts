@@ -1,6 +1,6 @@
 import { MarketPriceRow, listMarketPrices, upsertMarketPrices } from '../store/marketPrices';
 
-const SOURCE_LABEL = 'Referensi harga nasional (PIHPS/Bapanas), diperbarui admin TAWANGTANI';
+const SOURCE_LABEL = 'Referensi harga nasional (PIHPS - Panel Harga Kementan/Bapanas)';
 
 export interface PriceView {
   commodity: string;
@@ -63,7 +63,117 @@ function normalizeName(s: string): string {
     .trim();
 }
 
+/**
+ * Mirror resmi Kementan: app3.pertanian.go.id/panelharga (data PIHPS Badan Pangan).
+ * Endpoint export HTML tanpa API key; respons kadang terpotong saat sibuk,
+ * jadi ada retry dengan backoff.
+ */
+const KEMTAN_BASE = 'https://app3.pertanian.go.id/panelharga/export_harian_excel.php';
+
+function parseKemtanTable(html: string): Array<{ name: string; price: number }> {
+  const out: Array<{ name: string; price: number }> = [];
+  if (!/<table/i.test(html) || html.includes('Data tidak ditemukan')) return out;
+  const trs = html.match(/<tr>[\s\S]*?<\/tr>/gi) ?? [];
+  for (const tr of trs) {
+    if (/<th/i.test(tr)) continue;
+    const cells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) =>
+      m[1]
+        .replace(/<[^>]*>/g, '')
+        .replace(/&[a-z]+;/gi, ' ')
+        .trim()
+    );
+    if (cells.length < 2 || !cells[0]) continue;
+    let price = 0;
+    for (let i = cells.length - 1; i >= 1; i--) {
+      const v = Number(cells[i].replace(/[^\d]/g, ''));
+      if (Number.isFinite(v) && v > 0) {
+        price = Math.round(v);
+        break;
+      }
+    }
+    if (price > 0) out.push({ name: cells[0], price });
+  }
+  return out;
+}
+
+async function kemtanFetchLevel(level: '1' | '3'): Promise<Map<string, number>> {
+  const fmt = (d: Date): string => d.toISOString().slice(0, 10);
+  const end = new Date();
+  const start = new Date(Date.now() - 3 * 86400000);
+  const params = new URLSearchParams({
+    tanggal_mulai: fmt(start),
+    tanggal_akhir: fmt(end),
+    level_harga: level,
+    kode_wilayah: '0',
+  });
+
+  let lastErr: Error | null = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${KEMTAN_BASE}?${params}`, {
+        headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      const rows = parseKemtanTable(html);
+      if (rows.length === 0 && !html.includes('Data tidak ditemukan')) {
+        throw new Error(`respons terpotong (${html.length} byte)`);
+      }
+      const map = new Map<string, number>();
+      for (const r of rows) map.set(r.name, r.price);
+      return map;
+    } catch (err) {
+      lastErr = err as Error;
+      await new Promise((r) => setTimeout(r, attempt * 1000));
+    }
+  }
+  throw lastErr ?? new Error('gagal fetch kemtan');
+}
+
+// Pemetaan nama di tabel Kementan → kunci komoditas aplikasi.
+// Prioritas: konsumen (level 3) dulu — acuan harga pasar yang dilihat petani.
+const KEMTAN_MAP: Record<string, Array<{ level: '1' | '3'; name: string }>> = {
+  beras_medium: [
+    { level: '3', name: 'Beras Medium' },
+    { level: '1', name: 'Beras Medium Penggilingan' },
+  ],
+  jagung_pipilan: [{ level: '1', name: 'Jagung Pipilan Kering' }],
+  bawang_merah: [{ level: '3', name: 'Bawang Merah' }],
+  bawang_putih: [{ level: '3', name: 'Bawang Putih Bonggol' }],
+  cabai_rawit_merah: [{ level: '3', name: 'Cabai Rawit Merah' }],
+  cabai_merah_besar: [{ level: '1', name: 'Cabai Merah Besar' }],
+};
+
+async function kemtanPanelharga(): Promise<Array<{ commodity: string; price: number }>> {
+  const [konsumen, produsen] = await Promise.all([
+    kemtanFetchLevel('3'),
+    kemtanFetchLevel('1').catch(() => new Map<string, number>()),
+  ]);
+  const byName = new Map<string, Map<string, number>>([
+    ['3', konsumen],
+    ['1', produsen],
+  ]);
+  const out: Array<{ commodity: string; price: number }> = [];
+  for (const [commodity, candidates] of Object.entries(KEMTAN_MAP)) {
+    for (const cand of candidates) {
+      const table = byName.get(cand.level);
+      const price = table?.get(cand.name);
+      if (typeof price === 'number' && price > 0) {
+        out.push({ commodity, price });
+        break;
+      }
+    }
+  }
+  if (out.length === 0) throw new Error('tidak ada komoditas cocok');
+  return out;
+}
+
 const fetchers: Fetcher[] = [
+  {
+    name: 'kemtan-panelharga',
+    run: kemtanPanelharga,
+  },
   {
     name: 'panelharga-v2',
     run: async () => {
