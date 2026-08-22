@@ -3,7 +3,7 @@ import { chatCompletion, ORMessage } from './openrouter';
 import { PROMPT_TOOL_DIRECTIVE, TOOL_SCHEMAS } from '../tools/schemas';
 import { executeTool } from '../tools/executors';
 
-const MAX_ITERATIONS = 5;
+const MAX_ITERATIONS = 7;
 
 const SYSTEM_PROMPT = `Anda adalah Tani AI, agronomis digital berbahasa Indonesia di aplikasi TAWANGTANI yang membantu petani kecil memaksimalkan hasil panen.
 
@@ -23,16 +23,46 @@ const SYSTEM_PROMPT = `Anda adalah Tani AI, agronomis digital berbahasa Indonesi
 6. Bahasa Indonesia sederhana yang dipahami petani; angka dosis jelas; hindari istilah asing tanpa penjelasan.
 7. Prioritaskan pendekatan PHT (budaya teknis dulu, kimia terakhir bila perlu) dan keselamatan pengguna.`;
 
-function parseDirective(text: string): ToolCallOut | null {
-  const match = text.match(/\{\s*"tool"\s*:\s*"[^"]+"[\s\S]*?\}/);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[0]) as { tool?: string; arguments?: Record<string, unknown> };
-    if (!parsed.tool) return null;
-    return { name: parsed.tool, arguments: parsed.arguments ?? {} };
-  } catch {
-    return null;
+function tryParseLoose(text: string): { name?: string; parameters?: Record<string, unknown>; arguments?: Record<string, unknown> } | null {
+  const cleaned = text.replace(/\[\s*\[/g, '[').replace(/\]\s*\]/g, ']');
+  const start = cleaned.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0;
+  for (let i = start; i < cleaned.length; i++) {
+    if (cleaned[i] === '{') depth++;
+    else if (cleaned[i] === '}') {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(cleaned.slice(start, i + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
   }
+  return null;
+}
+
+function parseDirective(text: string): ToolCallOut | null {
+  if (!text) return null;
+  const m = text.match(/\{\s*"tool"\s*:\s*"[^"]+"[\s\S]*?\}/);
+  if (m) {
+    try {
+      const parsed = JSON.parse(m[0]) as { tool?: string; arguments?: Record<string, unknown> };
+      if (parsed.tool) return { name: parsed.tool, arguments: parsed.arguments ?? {} };
+    } catch {
+      /* lanjut ke parser longgar */
+    }
+  }
+  const loose = tryParseLoose(text);
+  if (loose && typeof loose.name === 'string') {
+    return {
+      name: loose.name,
+      arguments: loose.parameters ?? loose.arguments ?? {},
+    };
+  }
+  return null;
 }
 
 function normalizeMessages(input: ChatMessageIn[]): ORMessage[] {
@@ -61,11 +91,20 @@ export async function runAgent(
 
   while (iterations < MAX_ITERATIONS) {
     iterations += 1;
+    if (iterations === MAX_ITERATIONS) {
+      convo.push({
+        role: 'system',
+        content:
+          'Iterasi terakhir: GUNAKAN data tool yang sudah didapat dan JAWAB pertanyaan pengguna sekarang. Dilarang memanggil tool lagi.',
+      });
+    }
     let result;
     try {
       result = await chatCompletion(
         convo,
-        nativeToolsBroken ? undefined : TOOL_SCHEMAS
+        nativeToolsBroken ? undefined : TOOL_SCHEMAS,
+        undefined,
+        nativeToolsBroken ? 'auto' : iterations === 1 ? 'required' : 'auto'
       );
     } catch (err) {
       if (!nativeToolsBroken && iterations === 1) {
@@ -76,6 +115,10 @@ export async function runAgent(
       }
       throw err;
     }
+
+    console.log(
+      `[agent] it=${iterations} tools=[${result.toolCalls.map((t) => t.name).join(',')}] content="${(result.content || '').slice(0, 60)}"`
+    );
 
     if (result.toolCalls.length > 0) {
       convo.push({
@@ -113,6 +156,19 @@ export async function runAgent(
         role: 'user',
         content: `[TOOL_RESULT ${directive.name}] ${JSON.stringify(toolResult)}`,
       });
+      continue;
+    }
+
+    // Model berniat memakai tool tetapi tidak memanggilnya (teks "saya akan cek...")
+    // → alihkan ke mode directive berbasis prompt.
+    if (
+      !result.toolCalls.length &&
+      !directive &&
+      !nativeToolsBroken &&
+      /(\bakan\b|\bcek\b|\bcari informasi\b|\bmemeriksa\b|tunggu|sebentar)/i.test(result.content || '')
+    ) {
+      nativeToolsBroken = true;
+      convo.push({ role: 'system', content: PROMPT_TOOL_DIRECTIVE });
       continue;
     }
 

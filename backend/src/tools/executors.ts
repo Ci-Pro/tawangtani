@@ -139,19 +139,37 @@ export async function executeTool(
     case 'product_search': {
       const q = String(args.query ?? '').toLowerCase().trim();
       const products = ctx.products ?? [];
-      const found = products
-        .filter((p) => {
-          if (!q) return true;
-          return (
-            p.brand.toLowerCase().includes(q) ||
-            p.name.toLowerCase().includes(q) ||
-            p.activeIngredient.toLowerCase().includes(q) ||
-            p.doses.some(
-              (d) => d.crop.toLowerCase().includes(q) || d.target.toLowerCase().includes(q)
-            )
-          );
-        })
-        .slice(0, 5);
+      const STOP = new Set([
+        'dan', 'atau', 'untuk', 'yang', 'pada', 'dengan', 'apa', 'saja', 'adalah', 'itu',
+        'rekomendasi', 'rekomendasikan', 'beserta', 'tersedia', 'tersedia', 'tolong',
+        'obat', 'produk', 'pupuk', 'merek', 'harga', 'tanaman', 'serangan', 'hebat',
+      ]);
+      const words = q.split(/[^a-z0-9]+/i).filter((w) => w.length >= 3 && !STOP.has(w));
+      const norm = (s: unknown) => String(s ?? '').toLowerCase();
+
+      let found: Array<{ p: (typeof products)[number]; score: number }>;
+      if (!words.length) {
+        found = products.slice(0, 6).map((p) => ({ p, score: 1 }));
+      } else {
+        found = products
+          .map((p) => {
+            const hay = [
+              norm(p.brand),
+              norm(p.name),
+              norm(p.activeIngredient),
+              norm(p.formulation),
+              norm(p.category),
+              ...p.doses.map((d) => `${norm(d.crop)} ${norm(d.target)}`),
+            ].join(' | ');
+            let score = 0;
+            for (const w of words) if (hay.includes(w)) score += 1;
+            return { p, score };
+          })
+          .filter((x) => x.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 6);
+      }
+
       if (found.length === 0) {
         return { summary: 'Tidak ada produk cocok di katalog.' };
       }
@@ -159,12 +177,14 @@ export async function executeTool(
         summary:
           'Produk ditemukan:\n' +
           found
-            .map(
-              (p) =>
-                `- ${p.brand} — ${p.name} (${p.formulation}), bahan aktif: ${p.activeIngredient}` +
-                (p.doses[0] ? `, dosis referensi: ${p.doses[0].dose} ${p.doses[0].unit} untuk ${p.doses[0].crop}` : '')
+            .map(({ p }) =>
+              `- ${p.brand} — ${p.name} (${p.formulation}), bahan aktif: ${p.activeIngredient}` +
+              (p.doses[0]
+                ? `, dosis referensi: ${p.doses[0].dose} ${p.doses[0].unit} untuk ${p.doses[0].crop}`
+                : '')
             )
-            .join('\n'),
+            .join('\n') +
+          '\nIngatkan petani membaca label kemasan sebelum aplikasi.',
       };
     }
 

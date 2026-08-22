@@ -46,7 +46,8 @@ function candidateModels(preferred?: string): string[] {
 async function callOnce(
   model: string,
   messages: ORMessage[],
-  tools?: ORToolSchema[]
+  tools?: ORToolSchema[],
+  toolChoice: 'auto' | 'required' = 'auto'
 ): Promise<ORResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60000);
@@ -62,7 +63,7 @@ async function callOnce(
       body: JSON.stringify({
         model,
         messages,
-        ...(tools && tools.length ? { tools, tool_choice: 'auto' } : {}),
+        ...(tools && tools.length ? { tools, tool_choice: toolChoice } : {}),
         temperature: 0.3,
         max_tokens: 1400,
       }),
@@ -87,7 +88,8 @@ export interface CompletionResult {
 export async function chatCompletion(
   messages: ORMessage[],
   tools?: ORToolSchema[],
-  preferredModel?: string
+  preferredModel?: string,
+  toolChoice: 'auto' | 'required' = 'auto'
 ): Promise<CompletionResult> {
   if (!config.openrouter.apiKey) {
     throw new Error('OPENROUTER_API_KEY belum diatur di server');
@@ -96,9 +98,9 @@ export async function chatCompletion(
   let lastError: Error | null = null;
 
   for (const model of candidateModels(preferredModel)) {
-    for (const attemptTools of [tools, undefined]) {
+    for (const attemptTools of tools ? [tools] : []) {
       try {
-        const json = await callOnce(model, messages, attemptTools);
+        const json = await callOnce(model, messages, attemptTools, toolChoice);
         const choice = json.choices?.[0];
         if (!choice) throw new Error('Respons tanpa pilihan model');
         return {
@@ -110,6 +112,7 @@ export async function chatCompletion(
           })),
         };
       } catch (err) {
+        console.log(`[openrouter] gagal model=${model} tools=${!!attemptTools}: ${(err as Error).message}`);
         lastError = err as Error;
       }
     }
