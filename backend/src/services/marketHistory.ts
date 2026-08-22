@@ -22,6 +22,7 @@ export async function snapshotToday(province = 'nasional'): Promise<number> {
   const rows: HistoryRow[] = prices.map((p) => ({
     commodity: p.commodity,
     province: p.province,
+    level: p.level ?? 3,
     date: today,
     price: p.price,
     source: 'snapshot',
@@ -65,7 +66,8 @@ function weekKey(dateStr: string): string {
 export async function getSeries(
   commodity: string,
   range: 'daily' | 'weekly' | 'monthly' | 'yearly',
-  province = 'nasional'
+  province = 'nasional',
+  level = 3
 ): Promise<{ buckets: Bucket[]; range: string }> {
   const now = new Date();
   let since: string;
@@ -87,7 +89,7 @@ export async function getSeries(
     since = iso(d);
   }
 
-  const rows = await queryHistory(commodity, province, since);
+  const rows = await queryHistory(commodity, province, since, level);
 
   let buckets: Bucket[];
   switch (range) {

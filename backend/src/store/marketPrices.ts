@@ -4,6 +4,7 @@ export interface MarketPriceRow {
   id: string;
   commodity: string;
   province: string;
+  level: number; // 1=Produsen, 2=Grosir/Pasar Besar, 3=Konsumen
   price: number;
   prev_price: number | null;
   unit: string;
@@ -20,10 +21,15 @@ function headers(): Record<string, string> {
   };
 }
 
-export async function listMarketPrices(commodity?: string, province?: string): Promise<MarketPriceRow[]> {
+export async function listMarketPrices(
+  commodity?: string,
+  province?: string,
+  level?: number
+): Promise<MarketPriceRow[]> {
   let path = 'market_prices?select=*&order=commodity.asc';
   if (commodity) path += `&commodity=eq.${encodeURIComponent(commodity)}`;
   if (province) path += `&province=eq.${encodeURIComponent(province)}`;
+  if (level) path += `&level=eq.${level}`;
   const res = await fetch(`${config.supabase.url}/rest/v1/${path}`, { headers: headers() });
   if (!res.ok) throw new Error(`REST market_prices -> ${res.status}`);
   return (await res.json()) as MarketPriceRow[];

@@ -5,6 +5,7 @@ const SOURCE_LABEL = 'Referensi harga nasional (PIHPS - Panel Harga Kementan/Bap
 export interface PriceView {
   commodity: string;
   province: string;
+  level: number;
   price: number;
   prevPrice: number | null;
   changePct: number | null;
@@ -27,6 +28,7 @@ export function toView(r: MarketPriceRow): PriceView {
   return {
     commodity: r.commodity,
     province: r.province,
+    level: r.level ?? 3,
     price: r.price,
     prevPrice: r.prev_price,
     changePct: changePct === null ? null : Math.round(changePct * 10) / 10,

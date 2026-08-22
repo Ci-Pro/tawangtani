@@ -3,6 +3,7 @@ import { config } from '../config';
 export interface HistoryRow {
   commodity: string;
   province: string;
+  level?: number; // default 3 (Konsumen)
   date: string; // YYYY-MM-DD
   price: number;
   source: string;
@@ -20,7 +21,7 @@ function headers(): Record<string, string> {
 export async function upsertHistory(rows: HistoryRow[]): Promise<void> {
   if (rows.length === 0) return;
   const res = await fetch(
-    `${config.supabase.url}/rest/v1/market_price_history?on_conflict=commodity,province,date`,
+    `${config.supabase.url}/rest/v1/market_price_history?on_conflict=commodity,province,level,date`,
     {
       method: 'POST',
       headers: headers(),
@@ -36,12 +37,14 @@ export async function upsertHistory(rows: HistoryRow[]): Promise<void> {
 export async function queryHistory(
   commodity: string,
   province: string,
-  sinceDate: string
+  sinceDate: string,
+  level = 3
 ): Promise<HistoryRow[]> {
   const path =
     `market_price_history?select=commodity,province,date,price,source` +
     `&commodity=eq.${encodeURIComponent(commodity)}` +
     `&province=eq.${encodeURIComponent(province)}` +
+    `&level=eq.${level}` +
     `&date=gte.${sinceDate}&order=date.asc&limit=2000`;
   const res = await fetch(`${config.supabase.url}/rest/v1/${path}`, { headers: headers() });
   if (!res.ok) throw new Error(`queryHistory -> ${res.status}`);

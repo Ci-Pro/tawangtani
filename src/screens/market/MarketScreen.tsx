@@ -24,6 +24,7 @@ import { RootProps } from '@/navigation/types';
 interface PriceView {
   commodity: string;
   province: string;
+  level?: number;
   price: number;
   prevPrice: number | null;
   changePct: number | null;
@@ -41,17 +42,48 @@ interface Bucket {
 }
 
 const LABELS: Record<string, string> = {
+  gabah_kering_panen: 'GKP',
+  gabah_kering_giling: 'GKG',
+  beras_medium: 'Beras',
+  beras_premium: 'Beras Prem',
+  jagung_pipilan: 'Jagung',
+  kedelai_kering: 'Kedelai',
+  cabai_rawit_merah: 'Cb Rawit',
+  cabai_rawit_hijau: 'Cb Rawit Hijau',
+  cabai_merah_besar: 'Cb Besar',
+  cabai_merah_keriting: 'Cb Keriting',
+  cabai_hijau_besar: 'Cb Hijau',
   bawang_merah: 'Bwg Merah',
   bawang_putih: 'Bwg Putih',
-  cabai_rawit_merah: 'Cb Rawit',
-  cabai_merah_besar: 'Cb Besar',
+  bawang_bombay: 'Bwg Bombay',
+  bawang_daun: 'Bwg Daun',
   tomat: 'Tomat',
   kentang: 'Kentang',
   wortel: 'Wortel',
   kol: 'Kol',
-  jagung_pipilan: 'Jagung',
-  beras_medium: 'Beras',
+  kacang_tanah: 'Kc Tanah',
+  kacang_hijau: 'Kc Hijau',
+  gula_pasir: 'Gula',
+  minyak_goreng_curah: 'MGO Curah',
+  minyak_goreng_kemasan: 'MGO Kemasan',
+  tepung_terigu: 'Tepung',
+  telur_ayam: 'Telur',
+  ayam_broiler: 'Ayam',
+  sapi_murni: 'Sapi',
+  ikan_kembung: 'Kembung',
+  ikan_bandeng: 'Bandeng',
+  ikan_tongkol: 'Tongkol',
+  ikan_lele: 'Lele',
+  ikan_nila: 'Nila',
+  udang_windu: 'Udang',
 };
+
+const LEVELS: { key: number; label: string; sub: string }[] = [
+  { key: 3, label: 'Konsumen', sub: 'pasar eceran' },
+  { key: 2, label: 'Grosir', sub: 'pasar besar' },
+  { key: 1, label: 'Produsen', sub: 'di petani' },
+];
+const LEVEL_NAME: Record<number, string> = { 1: 'Produsen', 2: 'Grosir', 3: 'Konsumen' };
 
 const PROV_LABEL = (p: string): string =>
   p === 'nasional' ? 'Nasional' : p.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -72,34 +104,43 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const [selected, setSelected] = React.useState<string>('cabai_rawit_merah');
   const [province, setProvince] = React.useState<string>('nasional');
   const [provModal, setProvModal] = React.useState(false);
+  const [level, setLevel] = React.useState<number>(3);
   const [range, setRange] = React.useState<RangeKey>('daily');
   const [buckets, setBuckets] = React.useState<Bucket[] | null>(null);
   const [chartLoading, setChartLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
   const loadPrices = React.useCallback(
-    async (prov?: string) => {
+    async (prov?: string, lvl?: number) => {
       if (!backendUrl) return;
       const p = prov ?? province;
+      const l = lvl ?? level;
       try {
         const res = await fetch(
-          `${backendUrl.replace(/\/$/, '')}/api/market/prices?province=${encodeURIComponent(p)}`
+          `${backendUrl.replace(/\/$/, '')}/api/market/prices?province=${encodeURIComponent(p)}&level=${l}`
         );
         if (!res.ok) return;
         const json = (await res.json()) as { prices?: PriceView[] };
         setPrices(json.prices ?? []);
       } catch {}
     },
-    [backendUrl, province]
+    [backendUrl, province, level]
   );
 
   React.useEffect(() => {
-    AsyncStorage.getItem('market_province').then((v) => {
-      const p = v ?? 'nasional';
-      if (v) setProvince(p);
-      loadPrices(p);
-      syncHargaJikaPerlu(p).then(() => loadPrices(p));
-    });
+    Promise.all([AsyncStorage.getItem('market_province'), AsyncStorage.getItem('market_level')]).then(
+      ([pv, lv]) => {
+        const p = pv ?? 'nasional';
+        if (pv) setProvince(p);
+        let l = 3;
+        if (lv === '1' || lv === '2' || lv === '3') {
+          l = Number(lv);
+          setLevel(l);
+        }
+        loadPrices(p, l);
+        syncHargaJikaPerlu(p).then(() => loadPrices(p, l));
+      }
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -112,6 +153,13 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
     syncHargaJikaPerlu(p).then(() => loadPrices(p));
   };
 
+  const changeLevel = (l: number): void => {
+    setLevel(l);
+    AsyncStorage.setItem('market_level', String(l));
+    setPrices(null);
+    loadPrices(undefined, l);
+  };
+
   React.useEffect(() => {
     if (!backendUrl || !selected) return;
     let alive = true;
@@ -119,7 +167,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
     (async () => {
       try {
         const res = await fetch(
-          `${backendUrl.replace(/\/$/, '')}/api/market/history?commodity=${selected}&range=${range}&province=${encodeURIComponent(province)}`
+          `${backendUrl.replace(/\/$/, '')}/api/market/history?commodity=${selected}&range=${range}&province=${encodeURIComponent(province)}&level=${level}`
         );
         if (!res.ok) throw new Error('http');
         const json = (await res.json()) as { buckets?: Bucket[] };
@@ -168,6 +216,36 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           <Ionicons name="chevron-down" size={15} color={palette.textMuted} />
         </TouchableOpacity>
 
+        {/* Pemilih tingkat pasar (PIHPS) */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+          {LEVELS.map((l) => {
+            const active = l.key === level;
+            return (
+              <TouchableOpacity
+                key={l.key}
+                onPress={() => changeLevel(l.key)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: active ? palette.primarySoft : palette.surface,
+                    borderColor: active ? palette.primary : palette.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: active ? palette.primary : palette.textMuted,
+                    fontSize: 12,
+                    fontWeight: '800',
+                  }}
+                >
+                  {l.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
         {/* Pemilih komoditas */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
           {(prices ?? []).map((p) => {
@@ -210,7 +288,8 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                   <Text style={{ fontSize: 13, color: palette.textMuted }}>/{current.unit}</Text>
                 </Text>
                 <Text style={{ color: palette.textMuted, fontSize: 12 }}>
-                  Referensi {PROV_LABEL(province)} • {LABELS[current.commodity] ?? current.commodity}
+                  Referensi {LEVEL_NAME[level]} {PROV_LABEL(province)} •{' '}
+                  {LABELS[current.commodity] ?? current.commodity}
                 </Text>
               </View>
               <View

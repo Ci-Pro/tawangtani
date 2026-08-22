@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { Card } from '@/components/Card';
 import { EmptyState, Screen } from '@/components/Screen';
 import { useTheme } from '@/theme/ThemeProvider';
 import { searchProducts, useProductStore } from '@/store/useProductStore';
+import { syncCatalog } from '@/services/catalogSync';
 import { RootStackParamList } from '@/navigation/types';
 
 const CATEGORIES = [
@@ -22,6 +23,10 @@ const ProductListScreen: React.FC<{ route?: { params?: { category?: 'pupuk' | 'p
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { palette } = useTheme();
   const products = useProductStore((s) => s.products);
+
+  useEffect(() => {
+    syncCatalog().catch(() => undefined);
+  }, []);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>(route?.params?.category ?? '');
 
