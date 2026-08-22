@@ -65,6 +65,45 @@ function normalizeName(s: string): string {
 
 const fetchers: Fetcher[] = [
   {
+    name: 'panelharga-v2',
+    run: async () => {
+      const key = process.env.BAPANAS_API_KEY?.trim();
+      if (!key) throw new Error('BAPANAS_API_KEY belum diset');
+      const res = await fetch(
+        'https://api-panelhargav2.badanpangan.go.id/api/front/harga-pangan-table-v2',
+        {
+          headers: {
+            Accept: 'application/json',
+            'x-api-key': key,
+            'User-Agent': 'Mozilla/5.0',
+          },
+          signal: AbortSignal.timeout(10000),
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as { data?: unknown };
+      if (!json.data || typeof json.data !== 'object') throw new Error('struktur tak dikenal');
+      // Struktur respons dipetakan longgar: cari daftar { komoditas/harga } di dalam data
+      const out: Array<{ commodity: string; price: number }> = [];
+      const walk = (node: unknown): void => {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) {
+          node.forEach(walk);
+          return;
+        }
+        const obj = node as Record<string, unknown>;
+        const name = obj.komoditas ?? obj.commodity ?? obj.nama;
+        const price = obj.harga ?? obj.price ?? obj.rata_rata;
+        if (typeof name === 'string' && typeof price === 'number' && price > 0) {
+          out.push({ commodity: normalizeName(name), price: Math.round(price) });
+        }
+        Object.values(obj).forEach(walk);
+      };
+      walk(json.data);
+      return out;
+    },
+  },
+  {
     name: 'panelharga-bapanas',
     run: async () => {
       const res = await fetch(
