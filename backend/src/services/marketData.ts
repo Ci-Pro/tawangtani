@@ -111,7 +111,12 @@ async function kemtanFetchLevel(level: '1' | '3'): Promise<Map<string, number>> 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const res = await fetch(`${KEMTAN_BASE}?${params}`, {
-        headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0' },
+        headers: {
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+          'User-Agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        },
         signal: AbortSignal.timeout(20000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
