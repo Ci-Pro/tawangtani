@@ -247,9 +247,11 @@ export async function refreshPrices(): Promise<{
   updated: number;
   sources: string[];
   note?: string;
+  errors?: string[];
 }> {
   let collected: Array<{ commodity: string; price: number }> = [];
   const sources: string[] = [];
+  const errors: string[] = [];
   for (const f of fetchers) {
     try {
       const rows = await f.run();
@@ -257,7 +259,8 @@ export async function refreshPrices(): Promise<{
         collected = collected.concat(rows);
         sources.push(f.name);
       }
-    } catch {
+    } catch (err) {
+      errors.push(`${f.name}: ${(err as Error).message}`);
       continue;
     }
   }
@@ -267,6 +270,7 @@ export async function refreshPrices(): Promise<{
       updated: 0,
       sources,
       note: 'Semua sumber upstream gagal/diubah — cache tetap dipakai.',
+      errors,
     };
   }
 
