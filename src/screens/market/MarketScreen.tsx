@@ -15,6 +15,7 @@ import { EmptyState, Screen } from '@/components/Screen';
 import { PriceChart, ChartPoint } from '@/components/PriceChart';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { syncHargaJikaPerlu } from '@/services/kemtanSync';
 import { fmtNum } from '@/utils/format';
 import { RootProps } from '@/navigation/types';
 
@@ -81,6 +82,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
 
   React.useEffect(() => {
     loadPrices();
+    syncHargaJikaPerlu().then(loadPrices);
   }, [loadPrices]);
 
   React.useEffect(() => {

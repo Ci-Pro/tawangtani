@@ -1,10 +1,24 @@
 import { Router, Request, Response } from 'express';
-import { listMarketPrices } from '../store/marketPrices';
+import { listMarketPrices, upsertMarketPrices } from '../store/marketPrices';
 import { guidanceFor, refreshPrices, SOURCE_LABEL, toView } from '../services/marketData';
 import { getSeries, snapshotToday } from '../services/marketHistory';
 import { config } from '../config';
+import { requireSupabaseUser } from '../middleware/supabaseUser';
 
 export const marketRouter = Router();
+
+const KNOWN_COMMODITIES = new Set([
+  'bawang_merah',
+  'bawang_putih',
+  'cabai_rawit_merah',
+  'cabai_merah_besar',
+  'tomat',
+  'kentang',
+  'wortel',
+  'kol',
+  'jagung_pipilan',
+  'beras_medium',
+]);
 
 marketRouter.get('/prices', async (req: Request, res: Response) => {
   try {
@@ -62,6 +76,45 @@ marketRouter.post('/snapshot', async (req: Request, res: Response) => {
     }
     const saved = await snapshotToday();
     res.json({ ok: true, saved });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/**
+ * Crowd-refresh: perangkat petani (IP seluler, tidak diblokir WAF Kementan)
+ * mengambil harga dari mirror Kementan lalu menyumbangkan hasilnya ke cache.
+ */
+marketRouter.post('/ingest', requireSupabaseUser, async (req: Request, res: Response) => {
+  try {
+    const raw = Array.isArray((req.body as { prices?: unknown })?.prices)
+      ? ((req.body as { prices: unknown[] }).prices as Array<Record<string, unknown>>)
+      : [];
+    const clean = raw
+      .filter((p) => KNOWN_COMMODITIES.has(String(p?.commodity)) && Number.isFinite(Number(p?.price)))
+      .map((p) => ({ commodity: String(p.commodity), price: Math.round(Number(p.price)) }))
+      .filter((p) => p.price >= 500 && p.price <= 10_000_000);
+    if (clean.length === 0) {
+      res.status(400).json({ error: 'Tidak ada harga valid' });
+      return;
+    }
+    const existing = await listMarketPrices();
+    const nowIso = new Date().toISOString();
+    const updates = [];
+    for (const row of existing) {
+      const m = clean.find((c) => c.commodity === row.commodity);
+      if (m && m.price !== row.price) {
+        updates.push({
+          ...row,
+          prev_price: row.price,
+          price: m.price,
+          source: 'upstream:kemtan-panelharga',
+          updated_at: nowIso,
+        });
+      }
+    }
+    await upsertMarketPrices(updates);
+    res.json({ ok: true, updated: updates.length });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
