@@ -84,12 +84,18 @@ marketRouter.post('/snapshot', async (req: Request, res: Response) => {
 /**
  * Crowd-refresh: perangkat petani (IP seluler, tidak diblokir WAF Kementan)
  * mengambil harga dari mirror Kementan lalu menyumbangkan hasilnya ke cache.
+ * Mendukung level provinsi via body.province.
  */
 marketRouter.post('/ingest', requireSupabaseUser, async (req: Request, res: Response) => {
   try {
     const raw = Array.isArray((req.body as { prices?: unknown })?.prices)
       ? ((req.body as { prices: unknown[] }).prices as Array<Record<string, unknown>>)
       : [];
+    const province =
+      String((req.body as { province?: unknown })?.province ?? 'nasional')
+        .trim()
+        .toLowerCase()
+        .slice(0, 40) || 'nasional';
     const clean = raw
       .filter((p) => KNOWN_COMMODITIES.has(String(p?.commodity)) && Number.isFinite(Number(p?.price)))
       .map((p) => ({ commodity: String(p.commodity), price: Math.round(Number(p.price)) }))
@@ -98,23 +104,37 @@ marketRouter.post('/ingest', requireSupabaseUser, async (req: Request, res: Resp
       res.status(400).json({ error: 'Tidak ada harga valid' });
       return;
     }
-    const existing = await listMarketPrices();
+    const existing = await listMarketPrices(undefined, province);
+    const byCommodity = new Map(existing.map((r) => [r.commodity, r]));
     const nowIso = new Date().toISOString();
     const updates = [];
-    for (const row of existing) {
-      const m = clean.find((c) => c.commodity === row.commodity);
-      if (m && m.price !== row.price) {
+    for (const c of clean) {
+      const row = byCommodity.get(c.commodity);
+      if (row) {
+        if (row.price !== c.price) {
+          updates.push({
+            ...row,
+            prev_price: row.price,
+            price: c.price,
+            source: 'upstream:kemtan-panelharga',
+            updated_at: nowIso,
+          });
+        }
+      } else {
         updates.push({
-          ...row,
-          prev_price: row.price,
-          price: m.price,
+          id: `${c.commodity}|${province}`,
+          commodity: c.commodity,
+          province,
+          price: c.price,
+          prev_price: null,
+          unit: 'kg',
           source: 'upstream:kemtan-panelharga',
           updated_at: nowIso,
         });
       }
     }
     await upsertMarketPrices(updates);
-    res.json({ ok: true, updated: updates.length });
+    res.json({ ok: true, updated: updates.length, province });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }

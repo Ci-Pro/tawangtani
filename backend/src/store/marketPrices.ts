@@ -29,6 +29,15 @@ export async function listMarketPrices(commodity?: string, province?: string): P
   return (await res.json()) as MarketPriceRow[];
 }
 
+export async function listProvinces(): Promise<string[]> {
+  const res = await fetch(`${config.supabase.url}/rest/v1/market_prices?select=province`, {
+    headers: headers(),
+  });
+  if (!res.ok) return [];
+  const rows = (await res.json()) as Array<{ province: string }>;
+  return [...new Set(rows.map((r) => r.province))];
+}
+
 export async function upsertMarketPrices(rows: MarketPriceRow[]): Promise<void> {
   if (rows.length === 0) return;
   const res = await fetch(`${config.supabase.url}/rest/v1/market_prices`, {

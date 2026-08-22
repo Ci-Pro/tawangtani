@@ -8,6 +8,51 @@ const THROTTLE_MS = 20 * 60 * 60 * 1000;
 
 const KEMTAN_BASE = 'https://app3.pertanian.go.id/panelharga/export_harian_excel.php';
 
+/** Kode wilayah resmi situs Panel Harga Kementan. */
+export const PROVINCE_CODES: Record<string, string> = {
+  aceh: '11',
+  'sumatera utara': '12',
+  'sumatera barat': '13',
+  riau: '14',
+  jambi: '15',
+  'sumatera selatan': '16',
+  bengkulu: '17',
+  lampung: '18',
+  'kepulauan bangka belitung': '19',
+  'kepulauan riau': '21',
+  'dki jakarta': '31',
+  'jawa barat': '32',
+  'jawa tengah': '33',
+  'd.i yogyakarta': '34',
+  yogyakarta: '34',
+  'jawa timur': '35',
+  banten: '36',
+  bali: '51',
+  'nusa tenggara barat': '52',
+  'nusa tenggara timur': '53',
+  'kalimantan barat': '61',
+  'kalimantan tengah': '62',
+  'kalimantan selatan': '63',
+  'kalimantan timur': '64',
+  'kalimantan utara': '65',
+  'sulawesi utara': '71',
+  'sulawesi tengah': '72',
+  'sulawesi selatan': '73',
+  'sulawesi tenggara': '74',
+  gorontalo: '75',
+  'sulawesi barat': '76',
+  maluku: '81',
+  'maluku utara': '82',
+  'papua barat': '92',
+  'papua barat daya': '96',
+  papua: '91',
+  'papua selatan': '93',
+  'papua tengah': '94',
+  'papua pegunungan': '95',
+};
+
+export const PROVINCE_LIST: string[] = Object.keys(PROVINCE_CODES).sort();
+
 interface KemtanCandidate {
   level: '1' | '3';
   name: string;
@@ -51,13 +96,14 @@ function parseTable(html: string): Array<{ name: string; price: number }> {
   return out;
 }
 
-async function fetchLevel(level: '1' | '3'): Promise<Map<string, number>> {
+async function fetchLevel(level: '1' | '3', province?: string): Promise<Map<string, number>> {
   const fmt = (d: Date): string => d.toISOString().slice(0, 10);
+  const kode = (province && PROVINCE_CODES[province.toLowerCase()]) || '0';
   const params = new URLSearchParams({
     tanggal_mulai: fmt(new Date(Date.now() - 3 * 86400000)),
     tanggal_akhir: fmt(new Date()),
     level_harga: level,
-    kode_wilayah: '0',
+    kode_wilayah: kode,
   });
   const res = await fetch(`${KEMTAN_BASE}?${params}`, {
     headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0' },
@@ -68,10 +114,12 @@ async function fetchLevel(level: '1' | '3'): Promise<Map<string, number>> {
   return map;
 }
 
-export async function fetchKemtanPrices(): Promise<Array<{ commodity: string; price: number }>> {
+export async function fetchKemtanPrices(
+  province?: string
+): Promise<Array<{ commodity: string; price: number }>> {
   const [konsumen, produsen] = await Promise.all([
-    fetchLevel('3'),
-    fetchLevel('1').catch(() => new Map<string, number>()),
+    fetchLevel('3', province),
+    fetchLevel('1', province).catch(() => new Map<string, number>()),
   ]);
   const tables = new Map<string, Map<string, number>>([
     ['3', konsumen],
@@ -95,21 +143,22 @@ export async function fetchKemtanPrices(): Promise<Array<{ commodity: string; pr
  * Dipanggil diam-diam saat layar Harga dibuka. Maksimal sekali per ~20 jam
  * per perangkat. Gagal diabaikan sepenuhnya.
  */
-export async function syncHargaJikaPerlu(): Promise<void> {
+export async function syncHargaJikaPerlu(province?: string): Promise<void> {
   try {
-    const last = Number((await AsyncStorage.getItem(LAST_SYNC_KEY)) ?? 0);
+    const provKey = (province ?? 'nasional').toLowerCase();
+    const last = Number((await AsyncStorage.getItem(`${LAST_SYNC_KEY}:${provKey}`)) ?? 0);
     if (Date.now() - last < THROTTLE_MS) return;
-    await AsyncStorage.setItem(LAST_SYNC_KEY, String(Date.now()));
+    await AsyncStorage.setItem(`${LAST_SYNC_KEY}:${provKey}`, String(Date.now()));
     if (!isSupabaseConfigured) return;
     const backendUrl = useSettingsStore.getState().backendUrl?.trim();
     if (!backendUrl) return;
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
-    const prices = await fetchKemtanPrices();
+    const prices = await fetchKemtanPrices(provKey === 'nasional' ? undefined : provKey);
     await fetch(`${backendUrl.replace(/\/$/, '')}/api/market/ingest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
-      body: JSON.stringify({ prices }),
+      body: JSON.stringify({ prices, province: provKey }),
     });
   } catch {
     // sinkronisasi latar belakang tidak boleh mengganggu pengguna

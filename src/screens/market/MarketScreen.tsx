@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -9,13 +10,14 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Card, SectionHeader } from '@/components/Card';
 import { EmptyState, Screen } from '@/components/Screen';
 import { PriceChart, ChartPoint } from '@/components/PriceChart';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { syncHargaJikaPerlu } from '@/services/kemtanSync';
+import { syncHargaJikaPerlu, PROVINCE_LIST } from '@/services/kemtanSync';
 import { fmtNum } from '@/utils/format';
 import { RootProps } from '@/navigation/types';
 
@@ -51,6 +53,9 @@ const LABELS: Record<string, string> = {
   beras_medium: 'Beras',
 };
 
+const PROV_LABEL = (p: string): string =>
+  p === 'nasional' ? 'Nasional' : p.replace(/\b\w/g, (c) => c.toUpperCase());
+
 const RANGES: { key: RangeKey; label: string; desc: string }[] = [
   { key: 'daily', label: 'Harian', desc: '30 hari' },
   { key: 'weekly', label: 'Mingguan', desc: '12 minggu' },
@@ -65,25 +70,47 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const backendUrl = useSettingsStore((s) => s.backendUrl);
   const [prices, setPrices] = React.useState<PriceView[] | null>(null);
   const [selected, setSelected] = React.useState<string>('cabai_rawit_merah');
+  const [province, setProvince] = React.useState<string>('nasional');
+  const [provModal, setProvModal] = React.useState(false);
   const [range, setRange] = React.useState<RangeKey>('daily');
   const [buckets, setBuckets] = React.useState<Bucket[] | null>(null);
   const [chartLoading, setChartLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const loadPrices = React.useCallback(async () => {
-    if (!backendUrl) return;
-    try {
-      const res = await fetch(`${backendUrl.replace(/\/$/, '')}/api/market/prices`);
-      if (!res.ok) return;
-      const json = (await res.json()) as { prices?: PriceView[] };
-      setPrices(json.prices ?? []);
-    } catch {}
-  }, [backendUrl]);
+  const loadPrices = React.useCallback(
+    async (prov?: string) => {
+      if (!backendUrl) return;
+      const p = prov ?? province;
+      try {
+        const res = await fetch(
+          `${backendUrl.replace(/\/$/, '')}/api/market/prices?province=${encodeURIComponent(p)}`
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as { prices?: PriceView[] };
+        setPrices(json.prices ?? []);
+      } catch {}
+    },
+    [backendUrl, province]
+  );
 
   React.useEffect(() => {
-    loadPrices();
-    syncHargaJikaPerlu().then(loadPrices);
-  }, [loadPrices]);
+    AsyncStorage.getItem('market_province').then((v) => {
+      const p = v ?? 'nasional';
+      if (v) setProvince(p);
+      loadPrices(p);
+      syncHargaJikaPerlu(p).then(() => loadPrices(p));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const changeProvince = (p: string): void => {
+    setProvModal(false);
+    setProvince(p);
+    AsyncStorage.setItem('market_province', p);
+    setPrices(null);
+    loadPrices(p);
+    syncHargaJikaPerlu(p).then(() => loadPrices(p));
+  };
 
   React.useEffect(() => {
     if (!backendUrl || !selected) return;
@@ -92,7 +119,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
     (async () => {
       try {
         const res = await fetch(
-          `${backendUrl.replace(/\/$/, '')}/api/market/history?commodity=${selected}&range=${range}`
+          `${backendUrl.replace(/\/$/, '')}/api/market/history?commodity=${selected}&range=${range}&province=${encodeURIComponent(province)}`
         );
         if (!res.ok) throw new Error('http');
         const json = (await res.json()) as { buckets?: Bucket[] };
@@ -106,7 +133,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
     return () => {
       alive = false;
     };
-  }, [backendUrl, selected, range]);
+  }, [backendUrl, selected, range, province]);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -129,6 +156,18 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {/* Pemilih provinsi */}
+        <TouchableOpacity
+          onPress={() => setProvModal(true)}
+          style={[styles.provButton, { backgroundColor: palette.surface, borderColor: palette.border }]}
+        >
+          <Ionicons name="location-outline" size={15} color={palette.primary} />
+          <Text style={{ color: palette.text, fontWeight: '800', fontSize: 12.5, flex: 1 }}>
+            Harga {PROV_LABEL(province)}
+          </Text>
+          <Ionicons name="chevron-down" size={15} color={palette.textMuted} />
+        </TouchableOpacity>
+
         {/* Pemilih komoditas */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
           {(prices ?? []).map((p) => {
@@ -171,7 +210,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                   <Text style={{ fontSize: 13, color: palette.textMuted }}>/{current.unit}</Text>
                 </Text>
                 <Text style={{ color: palette.textMuted, fontSize: 12 }}>
-                  Referensi nasional • {LABELS[current.commodity] ?? current.commodity}
+                  Referensi {PROV_LABEL(province)} • {LABELS[current.commodity] ?? current.commodity}
                 </Text>
               </View>
               <View
@@ -343,9 +382,46 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         ))}
 
         <Text style={{ color: palette.textMuted, fontSize: 11, marginVertical: 16, textAlign: 'center' }}>
-          Data referensi nasional; riwayat harian terekam otomatis via cron. Bisa berbeda dari harga lokal Anda.
+          Sumber resmi Panel Harga ({PROV_LABEL(province)}); riwayat harian terekam otomatis. Harga bisa berbeda dari harga di pasar terdekat Anda.
         </Text>
       </ScrollView>
+
+      <Modal visible={provModal} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalSheet, { backgroundColor: palette.surface }]}>
+            <View style={styles.modalHead}>
+              <Text style={{ color: palette.text, fontWeight: '900', fontSize: 16 }}>Pilih Wilayah</Text>
+              <TouchableOpacity onPress={() => setProvModal(false)}>
+                <Ionicons name="close" size={22} color={palette.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {['nasional', ...PROVINCE_LIST].map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => changeProvince(p)}
+                  style={[
+                    styles.provItem,
+                    p === province && { backgroundColor: palette.primary + '18' },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: p === province ? palette.primary : palette.text,
+                      fontWeight: p === province ? '900' : '600',
+                    }}
+                  >
+                    {PROV_LABEL(p)}
+                  </Text>
+                  {p === province && (
+                    <Ionicons name="checkmark" size={18} color={palette.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 };
@@ -390,6 +466,40 @@ const styles = StyleSheet.create({
   chartHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   statRow: { flexDirection: 'row', marginTop: 10 },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  provButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 10,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+  },
+  modalHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  provItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+  },
 });
 
 export default MarketScreen;

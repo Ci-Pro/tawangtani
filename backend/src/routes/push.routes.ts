@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { fetchWeatherAlerts } from '../services/weatherAlerts';
 import { listPushTokens, sendExpoPush, upsertPushToken } from '../store/pushTokens';
+import { listProvinces } from '../store/marketPrices';
 import { snapshotToday } from '../services/marketHistory';
 import { config, hasSupabase } from '../config';
 import { optionalSupabaseUser } from '../middleware/supabaseUser';
@@ -97,7 +98,9 @@ pushRouter.get('/cron/weather-push', async (req: Request, res: Response) => {
     const result = await runWeatherPushJob();
     let snapshot = 0;
     try {
-      snapshot = await snapshotToday();
+      for (const province of await listProvinces()) {
+        snapshot += await snapshotToday(province);
+      }
     } catch (e) {
       console.log('[cron] snapshot harga gagal:', (e as Error).message);
     }
