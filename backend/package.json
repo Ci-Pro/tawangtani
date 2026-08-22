@@ -10,7 +10,8 @@
     "start": "node dist/src/index.js",
     "typecheck": "tsc --noEmit",
     "seed:knowledge": "tsx scripts/seed-knowledge.ts",
-    "seed:market": "tsx scripts/seed-market.ts"
+    "seed:market": "tsx scripts/seed-market.ts",
+    "seed:market:history": "tsx scripts/backfill-market-history.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

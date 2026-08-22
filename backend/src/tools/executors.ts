@@ -2,6 +2,7 @@ import { ToolContext, ToolResult } from '../types';
 import { searchKnowledge } from '../store/knowledge';
 import { listMarketPrices } from '../store/marketPrices';
 import { guidanceFor, toView } from '../services/marketData';
+import { getSeries } from '../services/marketHistory';
 
 function assertPositive(v: number, name: string): void {
   if (!Number.isFinite(v) || v <= 0) throw new Error(`${name} harus lebih dari 0`);
@@ -198,6 +199,27 @@ export async function executeTool(
           : undefined;
       const province =
         typeof args.province === 'string' && args.province.trim() ? args.province.trim() : undefined;
+      const range = typeof args.range === 'string' ? (args.range as 'daily') : undefined;
+
+      if (range && commodity) {
+        const { buckets } = await getSeries(commodity, range, province ?? 'nasional');
+        if (buckets.length === 0) {
+          return { summary: `Belum ada riwayat ${range} untuk ${commodity}.` };
+        }
+        const first = buckets[0];
+        const last = buckets[buckets.length - 1];
+        const changePct = first.avg > 0 ? Math.round(((last.close - first.avg) / first.avg) * 1000) / 10 : null;
+        const lines = buckets
+          .slice(-12)
+          .map((b) => `${b.label}: avg Rp${b.avg.toLocaleString('id-ID')} (min Rp${b.min.toLocaleString('id-ID')} / max Rp${b.max.toLocaleString('id-ID')})`);
+        return {
+          summary:
+            `Riwayat ${range} ${commodity}: perubahan ${changePct}% dari awal periode. Rata-rata awal Rp${first.avg.toLocaleString('id-ID')} → terakhir Rp${last.close.toLocaleString('id-ID')}.\n` +
+            lines.join('\n') +
+            `\nAnalisis: jelaskan tren (naik/turun/fluktuatif), volatilitas (selisih min-max), dan rekomendasi timing jual yang hati-hati. Ingatkan data adalah referensi nasional.`,
+        };
+      }
+
       const rows = await listMarketPrices(commodity, province);
       if (rows.length === 0) {
         return {

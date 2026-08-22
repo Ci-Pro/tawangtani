@@ -105,6 +105,12 @@ export const TOOL_SCHEMAS: ORToolSchema[] = [
             description: "Kunci komoditas, mis. bawang_merah, cabai_rawit_merah. Kosong = semua.",
           },
           province: { type: 'string', description: "Nama provinsi, default 'nasional'" },
+          range: {
+            type: 'string',
+            enum: ['daily', 'weekly', 'monthly', 'yearly'],
+            description:
+              'Bila diisi, kembalikan statistik historis per periode (avg/min/max/close) untuk analisis tren, bukan harga saat ini.',
+          },
         },
       },
     },

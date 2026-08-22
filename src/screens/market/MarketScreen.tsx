@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Card, SectionHeader } from '@/components/Card';
 import { EmptyState, Screen } from '@/components/Screen';
+import { PriceChart, ChartPoint } from '@/components/PriceChart';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { fmtNum } from '@/utils/format';
@@ -28,59 +29,97 @@ interface PriceView {
   hint: string;
 }
 
-interface PricesResponse {
-  sourceLabel?: string;
-  prices?: PriceView[];
+interface Bucket {
+  label: string;
+  avg: number;
+  min: number;
+  max: number;
+  close: number;
 }
 
 const LABELS: Record<string, string> = {
-  bawang_merah: 'Bawang Merah',
-  bawang_putih: 'Bawang Putih',
-  cabai_rawit_merah: 'Cabai Rawit Merah',
-  cabai_merah_besar: 'Cabai Merah Besar',
+  bawang_merah: 'Bwg Merah',
+  bawang_putih: 'Bwg Putih',
+  cabai_rawit_merah: 'Cb Rawit',
+  cabai_merah_besar: 'Cb Besar',
   tomat: 'Tomat',
   kentang: 'Kentang',
   wortel: 'Wortel',
-  kol: 'Kol/Kubis',
-  jagung_pipilan: 'Jagung Pipilan',
-  beras_medium: 'Beras Medium',
+  kol: 'Kol',
+  jagung_pipilan: 'Jagung',
+  beras_medium: 'Beras',
 };
+
+const RANGES: { key: RangeKey; label: string; desc: string }[] = [
+  { key: 'daily', label: 'Harian', desc: '30 hari' },
+  { key: 'weekly', label: 'Mingguan', desc: '12 minggu' },
+  { key: 'monthly', label: 'Bulanan', desc: '24 bulan' },
+  { key: 'yearly', label: 'Tahunan', desc: 'per tahun' },
+];
+
+type RangeKey = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const { palette } = useTheme();
   const backendUrl = useSettingsStore((s) => s.backendUrl);
   const [prices, setPrices] = React.useState<PriceView[] | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
+  const [selected, setSelected] = React.useState<string>('cabai_rawit_merah');
+  const [range, setRange] = React.useState<RangeKey>('daily');
+  const [buckets, setBuckets] = React.useState<Bucket[] | null>(null);
+  const [chartLoading, setChartLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const load = React.useCallback(async () => {
-    if (!backendUrl) {
-      setError('Atur URL server di menu Profil untuk melihat harga pasar.');
-      setPrices(null);
-      return;
-    }
-    setError(null);
+  const loadPrices = React.useCallback(async () => {
+    if (!backendUrl) return;
     try {
-      const res = await fetch(
-        `${backendUrl.replace(/\/$/, '')}/api/market/prices`
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as PricesResponse;
+      const res = await fetch(`${backendUrl.replace(/\/$/, '')}/api/market/prices`);
+      if (!res.ok) return;
+      const json = (await res.json()) as { prices?: PriceView[] };
       setPrices(json.prices ?? []);
-    } catch (e) {
-      setError('Gagal memuat harga. Periksa koneksi atau server.');
-    }
+    } catch {}
   }, [backendUrl]);
 
   React.useEffect(() => {
-    load();
-  }, [load]);
+    loadPrices();
+  }, [loadPrices]);
+
+  React.useEffect(() => {
+    if (!backendUrl || !selected) return;
+    let alive = true;
+    setChartLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(
+          `${backendUrl.replace(/\/$/, '')}/api/market/history?commodity=${selected}&range=${range}`
+        );
+        if (!res.ok) throw new Error('http');
+        const json = (await res.json()) as { buckets?: Bucket[] };
+        if (alive) setBuckets(json.buckets ?? []);
+      } catch {
+        if (alive) setBuckets([]);
+      } finally {
+        if (alive) setChartLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [backendUrl, selected, range]);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await load();
+    await loadPrices();
     setRefreshing(false);
-  }, [load]);
+  }, [loadPrices]);
+
+  const current = prices?.find((p) => p.commodity === selected);
+  const points: ChartPoint[] = (buckets ?? []).map((b) => ({ label: b.label, value: b.close }));
+  const chartPositive =
+    points.length >= 2 ? points[points.length - 1].value >= points[0].value : true;
+  const periodChangePct =
+    points.length >= 2 && points[0].value > 0
+      ? Math.round(((points[points.length - 1].value - points[0].value) / points[0].value) * 1000) / 10
+      : null;
 
   return (
     <Screen>
@@ -88,123 +127,267 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.title, { color: palette.text }]}>Harga Pasar</Text>
-            <Text style={{ color: palette.textMuted, fontSize: 13 }}>
-              Referensi harga nasional harian
-            </Text>
-          </View>
-        </View>
+        {/* Pemilih komoditas */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+          {(prices ?? []).map((p) => {
+            const active = p.commodity === selected;
+            return (
+              <TouchableOpacity
+                key={p.commodity}
+                onPress={() => setSelected(p.commodity)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: active ? palette.primary : palette.surface,
+                    borderColor: active ? palette.primary : palette.border,
+                  },
+                ]}
+              >
+                <Text style={{ color: active ? '#fff' : palette.text, fontSize: 12.5, fontWeight: '700' }}>
+                  {LABELS[p.commodity] ?? p.commodity}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {!backendUrl && (
           <Card>
             <Text style={{ color: palette.text }}>
-              Harga pasar butuh koneksi ke server. Buka Profil → Server AI, isi URL backend.
+              Grafik harga butuh koneksi ke server. Buka Profil → Server AI.
             </Text>
           </Card>
         )}
 
-        {error && backendUrl && (
+        {/* Header gaya trading */}
+        {current && (
           <Card>
-            <Text style={{ color: palette.danger }}>{error}</Text>
+            <View style={styles.priceRow}>
+              <View>
+                <Text style={[styles.bigPrice, { color: palette.text }]}>
+                  Rp{fmtNum(current.price)}
+                  <Text style={{ fontSize: 13, color: palette.textMuted }}>/{current.unit}</Text>
+                </Text>
+                <Text style={{ color: palette.textMuted, fontSize: 12 }}>
+                  Referensi nasional • {LABELS[current.commodity] ?? current.commodity}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor:
+                      current.trend === 'naik'
+                        ? palette.success + '22'
+                        : current.trend === 'turun'
+                          ? palette.danger + '22'
+                          : palette.border + '55',
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={
+                    current.trend === 'naik' ? 'trending-up' : current.trend === 'turun' ? 'trending-down' : 'remove'
+                  }
+                  size={16}
+                  color={
+                    current.trend === 'naik'
+                      ? palette.success
+                      : current.trend === 'turun'
+                        ? palette.danger
+                        : palette.textMuted
+                  }
+                />
+                <Text
+                  style={{
+                    color:
+                      current.trend === 'naik'
+                        ? palette.success
+                        : current.trend === 'turun'
+                          ? palette.danger
+                          : palette.textMuted,
+                    fontWeight: '900',
+                    fontSize: 13,
+                    marginLeft: 4,
+                  }}
+                >
+                  {current.changePct === null ? '—' : `${current.changePct > 0 ? '+' : ''}${current.changePct}%`}
+                </Text>
+              </View>
+            </View>
+            {current.hint ? (
+              <Text style={{ color: palette.textMuted, fontSize: 12, marginTop: 10 }}>💡 {current.hint}</Text>
+            ) : null}
           </Card>
         )}
 
-        {prices === null && !error && (
-          <ActivityIndicator style={{ marginTop: 24 }} color={palette.primary} />
-        )}
+        {/* Tab rentang waktu */}
+        <View style={[styles.rangeTabs, { borderColor: palette.border }]}>
+          {RANGES.map((r) => (
+            <TouchableOpacity
+              key={r.key}
+              onPress={() => setRange(r.key)}
+              style={[
+                styles.rangeTab,
+                { backgroundColor: range === r.key ? palette.primary : 'transparent' },
+              ]}
+            >
+              <Text style={{ color: range === r.key ? '#fff' : palette.textMuted, fontWeight: '800', fontSize: 12.5 }}>
+                {r.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-        {Array.isArray(prices) && prices.length === 0 && (
-          <EmptyState
-            icon="📉"
-            title="Belum ada data"
-            subtitle="Data harga belum tersedia. Tarik ke bawah untuk menyegarkan."
-          />
-        )}
-
-        {Array.isArray(prices) &&
-          prices.map((p) => {
-            const up = p.trend === 'naik';
-            const down = p.trend === 'turun';
-            const trendColor = up ? palette.success : down ? palette.danger : palette.textMuted;
-            return (
-              <Card key={`${p.commodity}-${p.province}`} style={{ marginBottom: 10 }}>
-                <View style={styles.row}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.commodity, { color: palette.text }]}>
-                      {LABELS[p.commodity] ?? p.commodity}
-                    </Text>
-                    <Text style={{ color: palette.textMuted, fontSize: 12 }}>
-                      Rp{fmtNum(p.prevPrice ?? p.price)} → hari ini
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[styles.price, { color: palette.text }]}>
-                      Rp{fmtNum(p.price)}
-                      <Text style={{ fontSize: 12, color: palette.textMuted }}>/{p.unit}</Text>
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons
-                        name={up ? 'trending-up' : down ? 'trending-down' : 'remove'}
-                        size={15}
-                        color={trendColor}
-                      />
-                      <Text style={{ color: trendColor, fontSize: 12, fontWeight: '700', marginLeft: 4 }}>
-                        {p.changePct === null
-                          ? '—'
-                          : `${p.changePct > 0 ? '+' : ''}${p.changePct}%`}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                {p.hint ? (
-                  <Text style={{ color: palette.textMuted, fontSize: 12, marginTop: 8 }}>
-                    💡 {p.hint}
+        {/* Chart */}
+        <Card>
+          {chartLoading ? (
+            <ActivityIndicator color={palette.primary} style={{ marginVertical: 60 }} />
+          ) : points.length >= 2 ? (
+            <>
+              <View style={styles.chartHead}>
+                <Text style={{ color: palette.textMuted, fontSize: 11.5 }}>
+                  {RANGES.find((r) => r.key === range)?.desc} • tutup per periode
+                </Text>
+                {periodChangePct !== null && (
+                  <Text
+                    style={{
+                      color: chartPositive ? palette.success : palette.danger,
+                      fontWeight: '900',
+                      fontSize: 12.5,
+                    }}
+                  >
+                    {periodChangePct > 0 ? '+' : ''}
+                    {periodChangePct}% / periode
                   </Text>
-                ) : null}
-              </Card>
-            );
-          })}
+                )}
+              </View>
+              <PriceChart points={points} positive={chartPositive} />
+              {/* Statistik ala trading */}
+              <View style={styles.statRow}>
+                {(() => {
+                  const vals = points.map((p) => p.value);
+                  return (
+                    <>
+                      <Stat label="Tertinggi" value={`Rp${fmtNum(Math.max(...vals))}`} palette={palette} />
+                      <Stat label="Terendah" value={`Rp${fmtNum(Math.min(...vals))}`} palette={palette} />
+                      <Stat
+                        label="Rata-rata"
+                        value={`Rp${fmtNum(Math.round(vals.reduce((a, b) => a + b, 0) / vals.length))}`}
+                        palette={palette}
+                      />
+                    </>
+                  );
+                })()}
+              </View>
+            </>
+          ) : (
+            <EmptyState
+              icon="📈"
+              title="Belum cukup data"
+              subtitle="Riwayat harga terkumpul otomatis setiap hari lewat cron."
+            />
+          )}
+        </Card>
 
-        {Array.isArray(prices) && prices.length > 0 && (
-          <TouchableOpacity
-            onPress={() =>
-              (
-                navigation.navigate as (
-                  ...args: unknown[]
-                ) => void
-              )(
-                'Main',
-                { screen: 'AI', params: { prefill: 'Berdasarkan harga pasar sekarang, kapan waktu terbaik menjual hasil panen saya dan bagaimana strateginya?' } }
-              )
-            }
-          >
-            <Card style={{ backgroundColor: palette.primary + '14' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color={palette.primary} />
-                <Text style={{ color: palette.primary, fontWeight: '800', marginLeft: 8 }}>
-                  Tanya AI soal strategi jual
+        <TouchableOpacity
+          onPress={() =>
+            (navigation.navigate as (...args: unknown[]) => void)(
+              'Main',
+              {
+                screen: 'AI',
+                params: {
+                  prefill: `Analisis tren harga ${LABELS[selected] ?? selected} periode ${range}. Kapan sebaiknya saya menjual?`,
+                },
+              }
+            )
+          }
+        >
+          <Card style={{ backgroundColor: palette.primary + '14', marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="analytics-outline" size={20} color={palette.primary} />
+              <Text style={{ color: palette.primary, fontWeight: '800', marginLeft: 8 }}>
+                Minta AI analisa grafik ini
+              </Text>
+            </View>
+          </Card>
+        </TouchableOpacity>
+
+        <SectionHeader title="Semua Komoditas" />
+
+        {(prices ?? []).map((p) => (
+          <TouchableOpacity key={p.commodity} onPress={() => setSelected(p.commodity)}>
+            <Card style={{ marginBottom: 8 }}>
+              <View style={styles.listRow}>
+                <Text style={{ color: palette.text, fontWeight: '800', flex: 1 }} numberOfLines={1}>
+                  {LABELS[p.commodity] ?? p.commodity}
+                </Text>
+                <Text style={{ color: palette.text, fontWeight: '900' }}>Rp{fmtNum(p.price)}</Text>
+                <Text
+                  style={{
+                    width: 62,
+                    textAlign: 'right',
+                    color:
+                      p.trend === 'naik' ? palette.success : p.trend === 'turun' ? palette.danger : palette.textMuted,
+                    fontSize: 12.5,
+                    fontWeight: '800',
+                  }}
+                >
+                  {p.changePct === null ? '' : `${p.changePct > 0 ? '+' : ''}${p.changePct}%`}
                 </Text>
               </View>
             </Card>
           </TouchableOpacity>
-        )}
+        ))}
 
         <Text style={{ color: palette.textMuted, fontSize: 11, marginVertical: 16, textAlign: 'center' }}>
-          Data merupakan referensi nasional dan bisa berbeda dari harga di daerah Anda.
+          Data referensi nasional; riwayat harian terekam otomatis via cron. Bisa berbeda dari harga lokal Anda.
         </Text>
       </ScrollView>
     </Screen>
   );
 };
 
+const Stat: React.FC<{ label: string; value: string; palette: { text: string; textMuted: string } }> = ({
+  label,
+  value,
+  palette,
+}) => (
+  <View style={{ flex: 1, alignItems: 'center' }}>
+    <Text style={{ color: palette.textMuted, fontSize: 10.5 }}>{label}</Text>
+    <Text style={{ color: palette.text, fontWeight: '900', fontSize: 12.5 }}>{value}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  headerRow: { marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: '900' },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  commodity: { fontSize: 15.5, fontWeight: '800' },
-  price: { fontSize: 16, fontWeight: '900' },
+  chipRow: { marginBottom: 12 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  bigPrice: { fontSize: 27, fontWeight: '900' },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  rangeTabs: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  rangeTab: { flex: 1, alignItems: 'center', paddingVertical: 9 },
+  chartHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  statRow: { flexDirection: 'row', marginTop: 10 },
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });
 
 export default MarketScreen;

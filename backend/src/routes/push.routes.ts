@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { fetchWeatherAlerts } from '../services/weatherAlerts';
 import { listPushTokens, sendExpoPush, upsertPushToken } from '../store/pushTokens';
+import { snapshotToday } from '../services/marketHistory';
 import { config, hasSupabase } from '../config';
 import { optionalSupabaseUser } from '../middleware/supabaseUser';
 
@@ -94,10 +95,16 @@ pushRouter.get('/cron/weather-push', async (req: Request, res: Response) => {
     }
     const tokens = await listPushTokens();
     const result = await runWeatherPushJob();
+    let snapshot = 0;
+    try {
+      snapshot = await snapshotToday();
+    } catch (e) {
+      console.log('[cron] snapshot harga gagal:', (e as Error).message);
+    }
     console.log(
-      `[cron] perangkat=${result.devices} terdaftar=${tokens.length} notif=${result.messages}`
+      `[cron] perangkat=${result.devices} terdaftar=${tokens.length} notif=${result.messages} snapshot_harga=${snapshot}`
     );
-    res.json({ ok: true, ...result });
+    res.json({ ok: true, ...result, snapshotHarga: snapshot });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
