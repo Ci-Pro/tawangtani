@@ -34,6 +34,8 @@ const FarmListScreen: React.FC = () => {
         <Ionicons name="leaf" size={30} color={palette.primary} />
       </View>
 
+      <Button title="🌱 Tanamanku & Untung" variant="ghost" onPress={() => navigation.navigate('Plantings')} />
+
       {farms.length === 0 ? (
         <>
           <EmptyState

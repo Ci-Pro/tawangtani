@@ -10,6 +10,12 @@ import {
   markAlertFired,
   upsertPriceAlert,
 } from '../store/priceAlerts';
+import {
+  listActivePlantings,
+  listPendingReminders,
+  markReminderFired,
+  updatePlanting,
+} from '../store/plantings';
 import { config, hasSupabase } from '../config';
 import { optionalSupabaseUser, requireSupabaseUser } from '../middleware/supabaseUser';
 
@@ -117,10 +123,16 @@ pushRouter.get('/cron/weather-push', async (req: Request, res: Response) => {
     } catch (e) {
       console.log('[cron] alarm harga gagal:', (e as Error).message);
     }
+    let reminders = 0;
+    try {
+      reminders = await runPlantingReminders();
+    } catch (e) {
+      console.log('[cron] pengingat tanam gagal:', (e as Error).message);
+    }
     console.log(
-      `[cron] perangkat=${result.devices} terdaftar=${tokens.length} notif=${result.messages} snapshot_harga=${snapshot} alarm=${alerts}`
+      `[cron] perangkat=${result.devices} terdaftar=${tokens.length} notif=${result.messages} snapshot_harga=${snapshot} alarm=${alerts} pengingat=${reminders}`
     );
-    res.json({ ok: true, ...result, snapshotHarga: snapshot, alertTerpicu: alerts });
+    res.json({ ok: true, ...result, snapshotHarga: snapshot, alertTerpicu: alerts, pengingat: reminders });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
@@ -252,6 +264,76 @@ pushRouter.get('/cron/price-alerts', async (req: Request, res: Response) => {
   try {
     if (!requireCronSecret(req, res)) return;
     const fired = await runPriceAlertJob();
+    res.json({ ok: true, terpicu: fired });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/**
+ * Pengingat HST: kirim push saat umur tanaman mencapai titik pengingat,
+ * plus notifikasi sekali saat perkiraan panen tiba.
+ */
+export async function runPlantingReminders(): Promise<number> {
+  if (!hasSupabase()) return 0;
+  const [reminders, plantings, tokens] = await Promise.all([
+    listPendingReminders(),
+    listActivePlantings(),
+    listPushTokens(),
+  ]);
+  if (reminders.length === 0 && plantings.length === 0) return 0;
+  const byPlanting = new Map(plantings.map((p) => [p.id, p]));
+  const tokenByUser = new Map<string, string>();
+  for (const t of tokens) if (t.user_id && t.expo_token) tokenByUser.set(t.user_id, t.expo_token);
+  const today = new Date().toISOString().slice(0, 10);
+  let fired = 0;
+  for (const r of reminders.slice(0, 1000)) {
+    const p = byPlanting.get(r.planting_id);
+    if (!p || !p.planted_at) continue;
+    const hst = Math.floor(
+      (Date.parse(today) - Date.parse(p.planted_at)) / 86400000
+    );
+    if (hst < r.hst) continue;
+    const token = tokenByUser.get(r.user_id);
+    if (token) {
+      await sendExpoPush([
+        {
+          to: token,
+          title: `🌱 Pengingat HST ${hst} — ${(p.name || p.commodity).replace(/_/g, ' ')}`,
+          body: r.label
+            ? `${r.label}. Sudah HST ${hst} — jangan sampai terlewat.`
+            : `Tanaman Anda sudah memasuki HST ${hst}.`,
+        },
+      ]);
+    }
+    await markReminderFired(r.id);
+    fired += 1;
+  }
+  // Notifikasi perkiraan panen tiba (sekali per tanaman)
+  for (const p of plantings.slice(0, 1000)) {
+    if (p.harvest_notified || !p.planted_at) continue;
+    const hst = Math.floor((Date.parse(today) - Date.parse(p.planted_at)) / 86400000);
+    if (hst < p.harvest_days) continue;
+    const token = tokenByUser.get(p.user_id);
+    if (token) {
+      await sendExpoPush([
+        {
+          to: token,
+          title: `🌾 Perkiraan panen tiba — ${(p.name || p.commodity).replace(/_/g, ' ')}`,
+          body: `Sudah ±${p.harvest_days} hari sejak tanam. Cek kesiapan panen & pantau harga jual di menu Harga.`,
+        },
+      ]);
+    }
+    await updatePlanting(p.user_id, p.id, { harvest_notified: true });
+    fired += 1;
+  }
+  return fired;
+}
+
+pushRouter.get('/cron/plant-reminders', async (req: Request, res: Response) => {
+  try {
+    if (!requireCronSecret(req, res)) return;
+    const fired = await runPlantingReminders();
     res.json({ ok: true, terpicu: fired });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

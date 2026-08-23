@@ -5,6 +5,7 @@ import { productsRouter } from './routes/products.routes';
 import { chatRouter } from './routes/chat.routes';
 import { pushRouter } from './routes/push.routes';
 import { marketRouter } from './routes/market.routes';
+import { plantingsRouter } from './routes/plantings.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 export function createApp(): express.Express {
@@ -26,6 +27,7 @@ export function createApp(): express.Express {
   app.use('/api/chat', chatRouter);
   app.use('/api/push', pushRouter);
   app.use('/api/market', marketRouter);
+  app.use('/api/plantings', plantingsRouter);
 
   app.use(errorHandler);
   return app;

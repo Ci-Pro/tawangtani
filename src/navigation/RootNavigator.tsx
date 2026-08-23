@@ -18,6 +18,7 @@ import UnitConverterScreen from '@/screens/calculator/UnitConverterScreen';
 import WeatherDetailScreen from '@/screens/weather/WeatherDetailScreen';
 import FarmListScreen from '@/screens/farm/FarmListScreen';
 import FarmFormScreen from '@/screens/farm/FarmFormScreen';
+import PlantingsScreen from '@/screens/farm/PlantingsScreen';
 import ActivitiesScreen from '@/screens/farm/ActivitiesScreen';
 import ActivityCalendarScreen from '@/screens/activity/ActivityCalendarScreen';
 import ProductListScreen from '@/screens/products/ProductListScreen';
@@ -124,6 +125,11 @@ const RootNavigator: React.FC = () => {
               name="FarmForm"
               component={FarmFormScreen}
               options={{ title: 'Tambah Lahan' }}
+            />
+            <Stack.Screen
+              name="Plantings"
+              component={PlantingsScreen}
+              options={{ title: 'Tanamanku & Untung' }}
             />
             <Stack.Screen
               name="Activities"

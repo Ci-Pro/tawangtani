@@ -1,0 +1,104 @@
+export const MARKET_LEVELS: { key: number; label: string; sub: string }[] = [
+  { key: 3, label: 'Konsumen', sub: 'pasar eceran' },
+  { key: 2, label: 'Grosir', sub: 'pasar besar' },
+  { key: 1, label: 'Produsen', sub: 'di petani' },
+];
+
+export const MARKET_LEVEL_NAME: Record<number, string> = {
+  1: 'Produsen',
+  2: 'Grosir',
+  3: 'Konsumen',
+};
+
+export const COMMODITY_LABELS: Record<string, string> = {
+  gabah_kering_panen: 'GKP',
+  gabah_kering_giling: 'GKG',
+  beras_medium: 'Beras',
+  beras_premium: 'Beras Prem',
+  jagung_pipilan: 'Jagung',
+  kedelai_kering: 'Kedelai',
+  cabai_rawit_merah: 'Cb Rawit',
+  cabai_rawit_hijau: 'Cb Rawit Hijau',
+  cabai_merah_besar: 'Cb Besar',
+  cabai_merah_keriting: 'Cb Keriting',
+  cabai_hijau_besar: 'Cb Hijau',
+  bawang_merah: 'Bwg Merah',
+  bawang_putih: 'Bwg Putih',
+  bawang_bombay: 'Bwg Bombay',
+  bawang_daun: 'Bwg Daun',
+  tomat: 'Tomat',
+  kentang: 'Kentang',
+  wortel: 'Wortel',
+  kol: 'Kol',
+  kacang_tanah: 'Kc Tanah',
+  kacang_hijau: 'Kc Hijau',
+  gula_pasir: 'Gula',
+  minyak_goreng_curah: 'MGO Curah',
+  minyak_goreng_kemasan: 'MGO Kemasan',
+  tepung_terigu: 'Tepung',
+  telur_ayam: 'Telur',
+  ayam_broiler: 'Ayam',
+  sapi_murni: 'Sapi',
+  ikan_kembung: 'Kembung',
+  ikan_bandeng: 'Bandeng',
+  ikan_tongkol: 'Tongkol',
+  ikan_lele: 'Lele',
+  ikan_nila: 'Nila',
+  udang_windu: 'Udang',
+};
+
+/** Estimasi produksi default (kg/ha) untuk kalkulator untung-rugi. */
+export const YIELD_DEFAULTS: Record<string, number> = {
+  gabah_kering_panen: 5200,
+  gabah_kering_giling: 4200,
+  jagung_pipilan: 5000,
+  kedelai_kering: 1300,
+  cabai_rawit_merah: 4000,
+  cabai_rawit_hijau: 5000,
+  cabai_merah_besar: 8000,
+  cabai_merah_keriting: 6000,
+  cabai_hijau_besar: 8000,
+  bawang_merah: 9000,
+  bawang_putih: 5500,
+  bawang_bombay: 12000,
+  bawang_daun: 6000,
+  tomat: 12000,
+  kentang: 15000,
+  wortel: 10000,
+  kol: 15000,
+  kacang_tanah: 1800,
+  kacang_hijau: 900,
+};
+
+/** Umur panen umum (hari) sebagai nilai awal form. */
+export const HARVEST_DAYS_DEFAULTS: Record<string, number> = {
+  gabah_kering_panen: 120,
+  gabah_kering_giling: 125,
+  jagung_pipilan: 105,
+  kedelai_kering: 85,
+  cabai_rawit_merah: 75,
+  cabai_rawit_hijau: 75,
+  cabai_merah_besar: 90,
+  cabai_merah_keriting: 90,
+  cabai_hijau_besar: 90,
+  bawang_merah: 70,
+  bawang_putih: 90,
+  bawang_bombay: 100,
+  bawang_daun: 55,
+  tomat: 80,
+  kentang: 100,
+  wortel: 90,
+  kol: 90,
+  kacang_tanah: 100,
+  kacang_hijau: 65,
+};
+
+/** Template pengingat HST standar (relatif terhadap tanggal tanam). */
+export function reminderTemplate(commodity: string): { hst: number; label: string }[] {
+  const total = HARVEST_DAYS_DEFAULTS[commodity] ?? 90;
+  return [
+    { hst: Math.round(total * 0.12), label: 'Pemupukan dasar susulan I' },
+    { hst: Math.round(total * 0.35), label: 'Pemupukan susulan II / penyemprotan preventif' },
+    { hst: Math.max(1, total - 10), label: 'Persiapan panen (cek harga terbaik)' },
+  ];
+}

@@ -9,6 +9,7 @@ export type RootStackParamList = {
   ProductDetail: { productId: string };
   History: undefined;
   FarmForm: { farmId?: string } | undefined;
+  Plantings: undefined;
   Activities: undefined;
   ActivityCalendar: undefined;
   Market: undefined;
