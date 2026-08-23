@@ -43,7 +43,7 @@ export async function queryHistory(
   const path =
     `market_price_history?select=commodity,province,date,price,source` +
     `&commodity=eq.${encodeURIComponent(commodity)}` +
-    `&province=eq.${encodeURIComponent(province)}` +
+    `&province=ilike.${encodeURIComponent(province.trim())}` +
     `&level=eq.${level}` +
     `&date=gte.${sinceDate}&order=date.asc&limit=2000`;
   const res = await fetch(`${config.supabase.url}/rest/v1/${path}`, { headers: headers() });

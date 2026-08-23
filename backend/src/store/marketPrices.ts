@@ -28,7 +28,7 @@ export async function listMarketPrices(
 ): Promise<MarketPriceRow[]> {
   let path = 'market_prices?select=*&order=commodity.asc';
   if (commodity) path += `&commodity=eq.${encodeURIComponent(commodity)}`;
-  if (province) path += `&province=eq.${encodeURIComponent(province)}`;
+  if (province) path += `&province=ilike.${encodeURIComponent(province.trim())}`;
   if (level) path += `&level=eq.${level}`;
   const res = await fetch(`${config.supabase.url}/rest/v1/${path}`, { headers: headers() });
   if (!res.ok) throw new Error(`REST market_prices -> ${res.status}`);

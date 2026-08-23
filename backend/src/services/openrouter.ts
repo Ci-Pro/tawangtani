@@ -140,25 +140,29 @@ export async function chatCompletion(
   let lastError: Error | null = null;
 
   for (const { provider, model } of candidateCalls(preferredModel)) {
-    for (const attemptTools of tools ? [tools] : []) {
-      try {
-        const json = await callOnce(provider, model, messages, attemptTools, toolChoice);
-        const choice = json.choices?.[0];
-        if (!choice) throw new Error('Respons tanpa pilihan model');
-        return {
-          content: choice.message.content ?? '',
-          toolCalls: (choice.message.tool_calls ?? []).map((tc) => ({
-            id: tc.id,
-            name: tc.function.name,
-            arguments: tc.function.arguments,
-          })),
-        };
-      } catch (err) {
-        console.log(
-          `[llm] gagal provider=${provider.name} model=${model} tools=${!!attemptTools}: ${(err as Error).message}`
-        );
-        lastError = err as Error;
-      }
+    try {
+      const json = await callOnce(
+        provider,
+        model,
+        messages,
+        tools && tools.length ? tools : undefined,
+        toolChoice
+      );
+      const choice = json.choices?.[0];
+      if (!choice) throw new Error('Respons tanpa pilihan model');
+      return {
+        content: choice.message.content ?? '',
+        toolCalls: (choice.message.tool_calls ?? []).map((tc) => ({
+          id: tc.id,
+          name: tc.function.name,
+          arguments: tc.function.arguments,
+        })),
+      };
+    } catch (err) {
+      console.log(
+        `[llm] gagal provider=${provider.name} model=${model}: ${(err as Error).message}`
+      );
+      lastError = err as Error;
     }
   }
 
