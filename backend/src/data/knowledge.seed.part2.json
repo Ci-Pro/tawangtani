@@ -1,0 +1,192 @@
+{
+  "docs": [
+    {
+      "id": "kb-padi-hp",
+      "title": "Hama dan Penyakit Utama Padi",
+      "description": "Identifikasi dan pengendalian PHT wereng batang cokelat, penggerek batang, blas, kresek, tikus, dan burung pada padi.",
+      "chunks": [
+        {
+          "crop": "padi",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi teknis PHT padi Kementan; wajib ikuti label pestisida dan saran PPL/BPP setempat",
+          "content": "Wereng batang cokelat (WBC) mengisap cairan batang sehingga padi menguning lalu kering berkelompok disebut hamparan mati (cendawan kaki). WBC juga menularkan virus tungro dan kerdil rumput. Pengamatan: ketuk rumpun ke wadah putih pada pagi hari, jika ada 5-10 imago/nimfa per rumpun atau gejala hamparan muncul, lakukan pengendalian. Pengendalian PHT: gunakan varietas tahan WBC, atur jarak tanam legowo agar udara lancar, hindari pemupukan urea berlebih yang membuat jaringan empuk, biarkan musuh alami seperti laba-laba dan Microvelia. Jika populasi melewati ambang, semprot insektisida berbahan aktif terdaftar untuk WBC sesuai label, rotasi bahan aktif tiap aplikasi agar tidak resisten."
+        },
+        {
+          "crop": "padi",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi teknis PHT padi Kementan; konsultasikan identifikasi ke PPL sebelum menyemprot",
+          "content": "Penggerek batang padi (Scirpophaga spp.) menyerupai kupu-kupu putih/cokelat muda. Larvanya menggorok tunas sehingga muncul sundep (malai tidak keluar, pusat anakan kering) saat vegetatif dan beluk (malai kosong, bulir hitam kosong) saat generatif. Gejala khas: Daun terbakar secara memanjang atau gugur di malam hari. Pengendalian: potong dan hancurkan telur (massa seperti sisir berbulu di daun bagian atas), pangkas jerangkong bekas panen karena larva hidup di dalamnya, atur tanam serempak satu blok agar siklus hama terputus. Semprot insektisida selektif saat intensitas moths tinggi dan banyak massa telur, bahan aktif umum antara lain klorantraniliprol atau emamektin benzoat, patuhi dosis label."
+        },
+        {
+          "crop": "padi",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi teknis perlindungan padi Kementan; konfirmasi diagnosis fisik ke PPL/BPTPH",
+          "content": "Penyakit blas (Pyricularia oryzae) membentuk bercak mata tupai: tepi cokelat, tengah abu-abu, pada daun, leher malai, dan gabah. Serangan pada leher malai menyebabkan bulir hampa dan gabah hitam. Kresek atau hawar daun bakteri (Xanthomonas oryzae) membuat daun layu mulai dari ujung berwarna abu-abu keriting seperti dibakar api, sering muncul setelah banjir atau hujan angin. Pencegahan utama: varietas tahan, jangan pupuk nitrogen berlebih dalam satu waktu, kelola air tidak tergenang terus. Untuk blas semprot fungisida berbahan aktif trisiklazol atau kasugamisin saat cuaca lembap dan bercak baru muncul; kresek dikelola dengan sanitasi benih sehat dan pemangkasan tanaman sakit, bakteri sulit diobati setelah menyebar luas."
+        },
+        {
+          "crop": "padi",
+          "topic": "hama_penyakit",
+          "source": "Petunjuk teknis pengendalian OPT lahan padi Kementan; koordinasi gerakan masal via kelompok tani",
+          "content": "Tikus sawah merusak padi sejak bibit hingga masak dengan cara menggerogoti batang dekat pangkal sehingga rumpun rubuh. Tanda: batang terpotong miring, jejak lumpur, sarang di pematang. Pengendalian efektif dilakukan bersama-sama: rapikan pematang dan saluran (tikus suka pematang bergembol), pasang perangkap lubang gali (LG) di jalur lintasan, gappy bund yaitu pematang dipotong tiap 15-20 m, dan gerakan tangkap massal saat malam bulan gelap. Burung pipit menyerang saat biji berisi (susuan). Lindung fase susu-masak dengan repeller plastik berdecak, bandul berayun, atau jaring pada petak sempit; bergantian jaga di petak karena burung cepat belajar."
+        }
+      ]
+    },
+    {
+      "id": "kb-jagung-hp",
+      "title": "Hama dan Penyakit Jagung",
+      "description": "Pengendalian ulat grayak, ulat tongkol, bulai, karat, dan bercak daun pada jagung.",
+      "chunks": [
+        {
+          "crop": "jagung",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi pengendalian S. frugiperda Kementan; pantau mingguan sejak semai",
+          "content": "Ulat grayak amerika (Spodoptera frugiperda) adalah hama jagung paling merusak saat ini. Larva punya pola Y terbalik putih di kepala dan empat titik gelap segi empat di segmen terakhir tubuh. Menyerang semua fase, paling parah pada tanaman muda: daun berlubang tak beraturan dan kotoran mirip gergaji di sudut daun. Pantau 10 titik diagonal per hektare tiap minggu. Ambang kendali: 20 persen tanaman rusak berat. Pengendalian: tabur kapur atau pasir halus ke roset daun muda untuk tanaman sedikit, peletakan telur di daun atas dapat diraba manual, dorong Trichogramma sebagai parasitoid telur. Bila melewati ambang semprot sore hari (larva aktif malam) dengan bahan aktif emamektin benzoat, spinetoram, atau klorantraniliprol sesuai label, arahkan semprot ke lidah roset daun."
+        },
+        {
+          "crop": "jagung",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi PHT jagung Kementan; sesuaikan dosis dengan label produk",
+          "content": "Ulat tongkol (Helicoverpa armigera) menusuk dan memakan biji jagung muda dari ujung tongkol, lubang masuk ditandai gergaji dan kotoran. Kerugian bisa 15-30 persen bila dibiarkan. Pengendalian PHT: lepaskan dan musnahkan ulat secara manual pada areal kecil, gunakan perangkap feromon untuk memantau dan menurunkan populasi ngengat, tanam serempak supaya fase tongkol tidak bertele-tele. Insektisida paling efektif saat larva masih kecil sebelum masuk ke dalam tongkol: semprot bagian rambut sutra (silking) dengan bahan aktif yang sama daftar dengan ulat grayak, patuhi interval pra-panen pada label karena tongkol mendekati panen."
+        },
+        {
+          "crop": "jagung",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi teknis budidaya dan perlindungan jagung Kementan; gunakan benih tahan bila tersedia",
+          "content": "Bulai (Peronosclerospora spp.) muncul sebagai garis-garis klorotik memanjang memutih di antara tulang daun, tanaman kerdil, malai bisa berubah jadi daun (fyllodi), penular melalui spora dan kutu daun vektor. Karat daun tampak bintik pustula cokelat kemerahan seperti karat besi di kedua sisi daun; bercak daun (turcicum dan maydis) berbentuk lonjong/ellips cokelat. Ketiganya berkembang cepat saat lembap dan padat tanam. Pengendalian: pakai benih varietas tahan dan perlakuan benih fungisida, atur jarak tanam cukup, hilangkan inang liar (sorgum, tebu liar) di sekitar lahan. Fungisida sistemik berbahan aktif azoksistrobin + siprokonazol atau difenokonazol efektif bila diterapkan dini saat gejala awal, ulangi sesuai label bila cuaca tetap lembap."
+        }
+      ]
+    },
+    {
+      "id": "kb-cabai-hp",
+      "title": "Hama dan Penyakit Utama Cabai",
+      "description": "Antraknosa, layu, virus kuning, thrips, kutu daun, dan ulat buah pada cabai beserta pengendalian PHT.",
+      "chunks": [
+        {
+          "crop": "cabai",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi PHT cabai Kementan; kombinasi sanitasi dan fungisida lebih baik dari semprot tunggal",
+          "content": "Antraknosa (patek) disebabkan Colletotrichum capsici: buah muncul bercak cekung cokelat gelap berlingkaran dengan titik-titik jingga (spora), buah busuk kering dan pahit. Menyebar cepat saat hujan lembap, spora terciprat dari tanah dan buah tua tersisa. Pengendalian: panen buah sehat lebih awal saat hujan deras berkepanjangan (menghindari infeksi), singkirkan buah sakit dari lahan jangan dibuang di parit, mulsa plastik mencegah cipratan tanah, atur drainase. Fungisida berbahan aktif azoksistrobin, difenokonazol, atau mankozeb dimulai sejak pembentukan buah pertama dan diulang tiap 7-10 hari saat musim hujan; pastikan semprot menutup seluruh kanopi termasuk buah bagian dalam."
+        },
+        {
+          "crop": "cabai",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi teknis perlindungan cabai Kementan; diagnosis layu sebaiknya dikonfirmasi PPL",
+          "content": "Layu pada cabai ada dua jenis yang harus dibedakan: layu fusarium (jamur) ditandai daun menguning mulai bawah, pangkal batang kecokelatan, tanaman layu siang pulih malam lalu akhirnya mati; layu bakteri (Ralstonia) layu cepat tanpa menguning, bila batang dipotong cairan putih keruh keluar, uji celup batang ke air bening akan keluar kabut bakteri. Keduanya menyebar lewat air dan alat tani. Pengendalian: cabut dan bakar tanaman sakit bersama tanah sekitarnya, jangan menanam solanaceae berulang di lahan yang sama (rotasi dengan padi sangat efektif), gunakan agens hayati Trichoderma pada lubang tanam sebagai pencegahan, perbaiki drainase. Fungisida hanya menahan fusarium (misal benomil atau propikonazol siram pangkal), bakteri praktis tidak bisa disembuhkan, fokus pada sanitasi."
+        },
+        {
+          "crop": "cabai",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi pengendalian vektor virus cabai Kementan; manajemen vektor adalah kunci utama",
+          "content": "Virus kuning cabai (gemini virus dan CMV) membuat daun keriting kecil menguning, pucuk memuntir, tanaman kerdil, bunga rontok, buah bengkok sedikit. Virus tidak bisa dibunuh pestisida apa pun; yang dikendalikan adalah vektornya yaitu kutu kebul (Bemisia tabaci) dan kutu daun hijau (Myzus persicae) serta thrips. Strategi: pasang mulsa plastik perak yang memantulkan cahaya untuk mengusir vektor, perangkap kuning lengket 40-50 per hektare, semprot insektisida vektoral (imidakloprid, diafenthiuron untuk kutu kebul; abamektin atau spinosad untuk thrips) secara terjadwal saat populasi naik, cabut tanaman bergejala virus dan musnahkan agar tidak jadi sumber. Tanaman terserang virus setelah 3-4 minggu usia sebaiknya langsung dicabut karena sudah tidak produktif."
+        },
+        {
+          "crop": "cabai",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi PHT hortikultura Kementan; pantau perangkap feromon mingguan",
+          "content": "Ulat buah cabai (Helicoverpa armigera) menggerek buah dari ujung mahkota bunga meninggalkan lubang dengan kotoran di sekitarnya, buah jatuh muda atau busuk. Satu ulat bisa merusak banyak buah karena berpindah. Perangkap feromon 4-5 unit per ha memantau kedatangan ngengat; bila tangkapan melonjak, segera lakukan pengamatan buah. Semprot insektisida saat larva kecil (sebelum masuk buah): emamektin benzoat, indoksakarb, atau klorantraniliprol, sorot ke tajuk tempat bunga dan buah muda. Pendukung: musnahkan buah terserang yang jatuh, rotasi dengan padi memutus siklus, dan pertahankan tanaman bunga liar di tepi lahan untuk pakan parasitoid dan predator alami."
+        }
+      ]
+    },
+    {
+      "id": "kb-bawang-hp",
+      "title": "Hama dan Penyakit Bawang Merah",
+      "description": "Ulat bawang, bercak ungu, moler dan layu pada bawang merah beserta pengendaliannya.",
+      "chunks": [
+        {
+          "crop": "bawang merah",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi pengendalian Spodoptera exigua Kementan; amati larva muda berkumpul sebelum menyebar",
+          "content": "Ulat bawang (Spodoptera exigua) adalah hama nomor satu bawang merah. Larva muda menggerogoti epidermis daun sehingga tampak bercak transparan garis putih (daun seperti digores); larva besar melubangi daun sampai patah dan hanya menyisakan tulang. Telur berkelompok ditutup bulu cokelat di permukaan daun. Pantau tiap pagi, balikkan daun bergejala goresan. Pengendalian bertahap: rabu dan hancurkan massa telur, semprot larva muda yang masih berkelompok paling efektif; bahan aktif umum emamektin benzoat, klorantraniliprol, atau spinetoram, semprot sore hari dan rotasi bahan aktif karena hama ini cepat resisten. Jangan semprot rutin tanpa pengamatan, itu mempercepat resistensi dan membunuh musuh alami."
+        },
+        {
+          "crop": "bawang merah",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi teknis perlindungan bawang merah Kementan; mulai semprot preventif saat musim hujan",
+          "content": "Bercak ungu (Alternaria porri) tampak lesi cekung cokelat dengan pinggiran ungu kekuningan pada daun dan tangkai bunga, daun kemudian patah lipat. Berkembang pesat saat malam lembap dan berkabut. Moler dan layu bakteri (Pseudomonas dan Burkholderia) membuat daun menguning melintang lalu layu, umbi busuk basah berbau saat disimpan. Pengendalian bercak ungu: fungisida mankozeb secara preventif tiap 5-7 hari saat musim hujan, naikkan ke azoksistrobin atau difenokonazol bila infeksi sudah ada; jaga sirkulasi dengan jarak tanam cukup. Untuk moler: gunakan umbi bibit sehat, jemur umbi bibit sebelum tanam, hindari luka saat penggembalan, panen pada umur cukup dan keringkan cepat; umbi tersimpan jaga ventilasi dan kelembapan rendah."
+        }
+      ]
+    },
+    {
+      "id": "kb-tomat-hp",
+      "title": "Hama dan Penyakit Utama Tomat",
+      "description": "Layu, antraknosa, lalat buah, virus mozaik, dan ulat daun pada tomat.",
+      "chunks": [
+        {
+          "crop": "tomat",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi PHT tomat Kementan; rotasi dan sanitasi adalah fondasi pengendalian layu",
+          "content": "Tomat mudah layu: fusarium (jamur) menyebabkan menguning satu sisi tanaman lalu layu progresif, bakteri Ralstonia layu mendadak dengan aliran getah keruh pada potongan batang, dan nematoda puru akar membuat akar berbintil sehingga tanaman kerdil menguning. Semua menyebar lewat tanah dan air irigasi. Pengendalian: rotasi panjang dengan padi atau jagung minimal satu musim, angkat dan musnahkan sisa tanaman sakit, okulasi (sambung) dengan rootstock tahan untuk areal endemik, Trichoderma pada media tanam menekan fusarium, gembur dan tambah bahan organik untuk menekan nematoda. Hindari genangan; bakteri layu meledak saat lahan tergenang lalu kering bergantian."
+        },
+        {
+          "crop": "tomat",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi perlindungan hortikultura Kementan; perangkap feromon efektif untuk lalat buah",
+          "content": "Antraknosa tomat menyerang buah matang: lesi cekung basah gelap dengan lingkar konsentris, buah busuk saat penyimpanan. Busuk buah juga datang dari lalat buah (Bactrocera) yang menusukkan telur, buah muncul titik lembap lalu membusuk dari dalam dan jatuh. Pengendalian lalat buah: perangkap metil eugenol + insektisida 20-40 per ha digantung di teduhan, bungkus atau kantongi buah pada areal kecil, segera angkat buah jatuh dan kubur dalam. Antraknosa dicegah fungisida azoksistrobin atau mankozeb sejak buah muda, panen tepat kematangan dan hindari luka panen karena jamur masuk lewat luka, pendinginan cepat setelah panen menekan perkembangan penyakit pasca panen."
+        },
+        {
+          "crop": "tomat",
+          "topic": "hama_penyakit",
+          "source": "Rekomendasi teknis hortikultura Kementan; cuci tangan dan alat saat berpindah tanaman",
+          "content": "Virus mozaik tomat (ToMV/TMV) membuat daun belang kuning-hijau mosaik, keriting, dan buah bercak cincin cokelat; penyebaran utama lewat tangan dan alat pekerja, bukan serangga. Tidak ada obat virus: cabut dan musnahkan tanaman bergejala, cuci tangan dengan sabu atau susu skim saat berpindah tanaman, sterilisasi pisau dan benang ikat, gunakan benih bersertifikat (bebas virus). Ulat daun (Helicoverpa dan Spodoptera litura) serta kutu daun merusak sekunder; kendalikan dengan BT (Bacillus thuringiensis) untuk ulat kecil dan semprot abamektin atau spinosad bila populasi tinggi. Pertahankan tanaman refugia dan bunga liar sebagai habitat musuh alami di tepi kebun."
+        }
+      ]
+    },
+    {
+      "id": "kb-dosis-pupuk-utama",
+      "title": "Dosis Pupuk Komoditas Utama",
+      "description": "Ringkasan dosis pupuk umum padi, jagung, cabai, bawang merah, dan tomat dengan teknik pemupukan.",
+      "chunks": [
+        {
+          "crop": "umum",
+          "topic": "pemupukan",
+          "source": "Angka contoh umum rekomendasi Kementan; wajib sesuaikan hasil uji tanah/rekomendasi BP3K setempat",
+          "content": "Contoh dosis pupuk umum per hektare (sesuaikan rekomendasi lokal): Padi sawah: Urea 200-250 kg, SP-36 75-100 kg, KCl 50-100 kg; dibagi dasar (sepertiga urea + semua SP-36 + separuh KCl) dan pupuk susulan I umur 15-20 HST serta susulan II awal primordia. Jagung: Urea 250-300 kg, SP-36 100 kg, KCl 50-75 kg; susulan I 7-14 HST, susulan II 28-35 HST saat bunga jantan. Cabai: pupuk kandang 10-15 ton, NPK 400-600 kg dibagi 3-4 kali plus susulan KCl saat pembentukan buah. Bawang merah: kandang 10 ton, SP-36 300 kg, Urea 150-200 kg, KCl 100-150 kg, mayoritas dasar + susulan 10-14 HST. Tomat: kandang 10-20 ton, NPK 500-700 kg bertahap tiap 2 minggu, tambah KCl saat buah menggembung. Prinsip: nitrogen berlebih memicu hama dan rebah, kalium meningkatkan kualitas dan daya tahan."
+        },
+        {
+          "crop": "umum",
+          "topic": "pemupukan",
+          "source": "Praktik pemupukan efisien Balitbangtan; cek pH tanah sebelum membeli pupuk",
+          "content": "Teknik pemupukan yang menghemat biaya: 1) Ukur pH tanah, bila di bawah 5,5 tambahkan kapur dolomit 1-1,5 ton per ha beberapa minggu sebelum tanam agar pupuk terserap efisien; 2) Letakkan pupuk di zona akar (taplak/lubang) bukan disebar mentah-mentah, kehilangan bisa turun 30 persen; 3) Pada padi gunakan metode USG (tablet urea super granul) yang ditanam di antara 4 rumpun, urea lebih awet; 4) Bagi pemberian nitrogen menjadi beberapa kali daripada sekali besar, terutama di lahan berdrainase baik; 5) Kombinasikan pupuk organik/kandang untuk menjaga struktur tanah dan aktivitas biologi, dosis kandang yang cukup menurunkan kebutuhan pupuk kimia 10-25 persen dalam beberapa musim; 6) Jangan pupuk saat tanah kering keras, siram dulu; 7) Catat tanggal dan dosis tiap musim sebagai basis evaluasi ekonomi."
+        }
+      ]
+    },
+    {
+      "id": "kb-strategi-pemasaran",
+      "title": "Strategi Jual dan Penyimpanan Hasil",
+      "description": "Sorting grading, pemilihan kanal jual, penyimpanan gabah dan komoditas sayur untuk harga terbaik.",
+      "chunks": [
+        {
+          "crop": "umum",
+          "topic": "strategi_jual",
+          "source": "Pengembangan agribisnis Kementan; bandingkan minimal dua kanal sebelum menjual",
+          "content": "Harga hasil panen naik signifikan dengan tiga langkah sederhana: 1) Sorting pisahkan kualitas A, B, dan rusak; gabah campuran kotoran bisa didiskon 5-15 persen oleh tengkulak, sedangkan gabah bersih kering masuk grade atas; 2) Kenali kanal: tengkulak kebun memberi cepat tapi murah, gapoktan/koperasi dan Bulog (untuk gabah GKP sesuai standar) memberi harga acuan lebih baik bila mutu memenuhi syarat, pasar induk cocok untuk volume sayur besar, dan penjualan langsung/kios tani memberi margin tertinggi dengan volume kecil; 3) Jual bertahap bila memungkinkan, simpan sebagian saat harga rendah musim raya panen dan jual saat harga naik. Hitung dulu biaya simpan dan risiko susut; untuk sayur segar yang cepat busuk, prioritas adalah kecepatan jual dan penanganan dingin, bukan menunggu."
+        },
+        {
+          "crop": "umum",
+          "topic": "strategi_jual",
+          "source": "Teknologi pascapanen Balitbangtan; susut tiap persen adalah pendapatan hilang",
+          "content": "Penyimpanan yang benar menahan penurunan harga: Gabah kering panen simpan di karung bertumpuk palet, kelembapan maksimal 14 persen (cek dengan gigit: keras dan pecah berarti cukup kering), ruangan kering berventilasi, beri jarak dari dinding, waspadai kutu bubuk dengan fumigasi atau silo hermetis (karung PICS) untuk simpanan lama. Cabai merah bisa dijual kering: cuci, jemur hingga kadar air sekitar 12 persen (masa jemur 5-7 hari), harga kering biasanya 6-10 kali harga basah dan tahan simpan berbulan-bulan. Bawang merah simpan di rak anyaman berventilasi dengan suhu ruang kering, pangkas daun 2 cm di atas umbi, jangan tumpuk tebal. Tomat dan sayur daun tidak tahan simpan: kumpulkan di jam dingin pagi, hindari tumpukan tinggi, kirim hari yang sama."
+        }
+      ]
+    },
+    {
+      "id": "kb-kalender-tanam",
+      "title": "Kalender Tanam dan Pemilihan Varietas",
+      "description": "Jendela tanam mengikuti musim hujan/hujan eropa dan prinsip memilih varietas untuk padi, jagung, palawija.",
+      "chunks": [
+        {
+          "crop": "umum",
+          "topic": "budidaya",
+          "source": "Kalender tanam BMKG-BPPT-Kementan; cek prediksi musim wilayah masing-masing",
+          "content": "Indonesia umumnya punya dua jendela tanam utama: MH (musim hujan, sekitar Oktober-Maret) dan MH1/MH2 (musim hujan era atau kemarau pendek, April-Juli), lalu MD (kemarau, Agustus-November) untuk lahan beririgasi. Prinsip aman: mulai tanam padi saat curah hujan dekaden mencapai 50-100 mm (biasanya awal November untuk sebagian besar Jawa), tanam serempak satu blok irigasi untuk memutus siklus hama dan mengatur air. Jagung dan palawija fleksibel: jagung MH ditanam awal hujan agar pollinasi tidak kena puncak basah, jagung MH1 ditanam akhir hujan dengan sisa air tanah. Di kemarau penuh, hanya lahan irigasi teknis yang aman untuk padi; lahan tadah hujan isi dengan kacang hijau, kedelai, atau sorgum yang tahan kering. Ikuti kalender tanam resmi dari BPP/PPL yang sudah memakai prediksi BMKG untuk desa Anda."
+        },
+        {
+          "crop": "umum",
+          "topic": "budidaya",
+          "source": "Deskripsi varietas Balitbangtan; minta benih bersertifikat dari produsen resmi",
+          "content": "Memilih varietas menentukan hasil lebih dari pupuk: 1) Umur: di musim hujan pilih varietas umur pendek-menengah (padi 105-120 hari) agar panen sebelum banjir dan memungkinkan tanam ganda; di areal rawan wereng pilih varietas yang secara resmi dinyatakan tahan ras WBC dominan; 2) Tujuan pasar: padi untuk gabah GKP ke Bulog cari varietas beras transparan rendah amilosa yang disukai pasar (Inpari 32, Ciherang turunannya), jagung pakan cari potensi hasil tinggi dan tongkol rapi, cabai merah besar vs rawit ikuti permintaan pasar setempat; 3) Ketersediaan benih: varietas populer mudah dapat benih dan pengalaman tetangga; 4) Catat varietas yang Anda tanam beserta hasilnya tiap musim sebagai data pribadi untuk memilih ulang. Hindari membeli benih curigan tanpa label; benih bersertifikat memberi kemurnian dan daya kecambah terjamin."
+        }
+      ]
+    }
+  ]
+}

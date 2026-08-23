@@ -69,6 +69,46 @@ export async function myFarmerPrices(userId: string): Promise<FarmerPriceRow[]> 
   return rows ?? [];
 }
 
+export async function adminListFarmerPrices(status?: string, limit = 200): Promise<FarmerPriceRow[]> {
+  let q = `farmer_prices?select=*&order=created_at.desc&limit=${limit}`;
+  if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+    q += `&status=eq.${status}`;
+  }
+  return ((await rest(q, 'GET')) as FarmerPriceRow[] | null) ?? [];
+}
+
+export async function adminModerateFarmerPrice(
+  id: string,
+  status: 'approved' | 'rejected' | 'pending'
+): Promise<void> {
+  await rest(`farmer_prices?id=eq.${encodeURIComponent(id)}`, 'PATCH', { status });
+}
+
+export async function adminDeleteFarmerPrice(id: string): Promise<void> {
+  await rest(`farmer_prices?id=eq.${encodeURIComponent(id)}`, 'DELETE');
+}
+
+export async function countRows(table: string, filters = ''): Promise<number> {
+  const b = base();
+  if (!b) return -1;
+  try {
+    const res = await fetch(`${b.url}/rest/v1/${table}?select=*${filters}`, {
+      method: 'HEAD',
+      headers: {
+        apikey: b.key,
+        Authorization: `Bearer ${b.key}`,
+        Prefer: 'count=exact',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    const range = res.headers.get('content-range') ?? '';
+    const m = range.match(/\/(\d+)$/);
+    return m ? Number(m[1]) : 0;
+  } catch {
+    return -1;
+  }
+}
+
 export interface FarmerAggregate {
   commodity: string;
   count: number;

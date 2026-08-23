@@ -43,9 +43,12 @@ async function rest(
 
 async function main(): Promise<void> {
   const base = requireEnv();
-  const seed = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', 'src', 'data', 'knowledge.seed.json'), 'utf8')
-  ) as SeedFile;
+  const append = process.argv.includes('--append');
+  const fileArg = process.argv.find((a) => a.endsWith('.json'));
+  const filePath = fileArg
+    ? path.resolve(fileArg)
+    : path.join(__dirname, '..', 'src', 'data', 'knowledge.seed.json');
+  const seed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as SeedFile;
 
   const docRows = seed.docs.map((d) => ({
     id: d.id,
@@ -73,10 +76,15 @@ async function main(): Promise<void> {
     }
   }
 
-  await rest(base, 'knowledge_chunks?doc_id=neq.__none__', 'DELETE');
+  if (!append) {
+    await rest(base, 'knowledge_chunks?doc_id=neq.__none__', 'DELETE');
+  }
+
   await rest(base, 'knowledge_chunks', 'POST', chunkRows);
 
-  console.log(`Seed knowledge selesai: ${docRows.length} dokumen, ${chunkRows.length} chunk.`);
+  console.log(
+    `Seed knowledge selesai (${append ? 'append' : 'replace'}): ${docRows.length} dokumen, ${chunkRows.length} chunk.`
+  );
 }
 
 main().catch((e) => {

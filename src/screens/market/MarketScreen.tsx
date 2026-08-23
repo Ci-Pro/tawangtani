@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Modal,
   RefreshControl,
   ScrollView,
@@ -23,6 +24,7 @@ import { COMMODITY_LABELS as LABELS, MARKET_LEVELS as LEVELS, MARKET_LEVEL_NAME 
 import { supabase } from '@/services/supabase';
 import { getExpoPushToken } from '@/services/pushRegister';
 import { fmtNum } from '@/utils/format';
+import { saveCache, loadCache, enqueue, processQueue, queueCount } from '@/services/offline';
 import { RootProps } from '@/navigation/types';
 
 interface PriceView {
@@ -87,6 +89,8 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const [buckets, setBuckets] = React.useState<Bucket[] | null>(null);
   const [chartLoading, setChartLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [offline, setOffline] = React.useState(false);
+  const [pendingSync, setPendingSync] = React.useState(0);
 
   // Laporan petani
   const [farmerAgg, setFarmerAgg] = React.useState<FarmerAgg[]>([]);
@@ -115,10 +119,19 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         const res = await fetch(
           `${backendUrl.replace(/\/$/, '')}/api/market/prices?province=${encodeURIComponent(p)}&level=${l}`
         );
-        if (!res.ok) return;
+        if (!res.ok) throw new Error('http');
         const json = (await res.json()) as { prices?: PriceView[] };
-        setPrices(json.prices ?? []);
-      } catch {}
+        const rows = json.prices ?? [];
+        setPrices(rows);
+        setOffline(false);
+        saveCache(`market_${p}_${l}`, rows);
+      } catch {
+        const cached = await loadCache<PriceView[]>(`market_${p}_${l}`);
+        if (cached && cached.data.length > 0) {
+          setPrices(cached.data);
+          setOffline(true);
+        }
+      }
     },
     [backendUrl, province, level]
   );
@@ -155,8 +168,28 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const changeProvince = (p: string): void => {
-    setProvModal(false);
+  // Sinkronkan antrean offline saat layar dibuka / aplikasi kembali aktif
+  React.useEffect(() => {
+    const flush = async (): Promise<void> => {
+      if (!backendUrl) return;
+      const n = await processQueue(backendUrl);
+      if (n > 0) {
+        setPendingSync(0);
+        loadReports();
+        loadPrices();
+      } else {
+        setPendingSync(await queueCount());
+      }
+    };
+    flush();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') flush();
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backendUrl]);
+
+  const changeProvince = (p: string): void => {    setProvModal(false);
     setProvince(p);
     AsyncStorage.setItem('market_province', p);
     setPrices(null);
@@ -244,7 +277,17 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         setRepStatus(json.error ?? 'Gagal mengirim');
       }
     } catch {
-      setRepStatus('Gagal mengirim, coba lagi');
+      await enqueue('report', '/api/market/report', {
+        commodity: repCommodity,
+        price,
+        role: repRole,
+        province,
+        village: repVillage.trim(),
+      });
+      setPendingSync(await queueCount());
+      setRepStatus('Sinyal hilang — laporan disimpan & dikirim otomatis saat online.');
+      setRepPrice('');
+      setTimeout(() => setReportModal(false), 1600);
     } finally {
       setRepSending(false);
     }
@@ -294,7 +337,25 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         setAlertStatus(json.error ?? 'Gagal membuat alarm');
       }
     } catch {
-      setAlertStatus('Gagal, coba lagi');
+      const expoToken2 = await getExpoPushToken();
+      if (expoToken2) {
+        await enqueue('alert', '/api/push/alerts', {
+          expoToken: expoToken2,
+          commodity: selected,
+          target,
+          direction: alertDir,
+          province,
+          level,
+        });
+        setPendingSync(await queueCount());
+        setAlertStatus('Sinyal hilang — alarm disimpan & dikirim otomatis saat online.');
+        setTimeout(() => {
+          setAlertModal(false);
+          setAlertStatus('');
+        }, 1800);
+      } else {
+        setAlertStatus('Gagal, coba lagi');
+      }
     } finally {
       setAlertSending(false);
     }
@@ -315,6 +376,22 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {offline && (
+          <View style={[styles.offlineBar, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Ionicons name="cloud-offline-outline" size={14} color={palette.primary} />
+            <Text style={[styles.offlineText, { color: palette.textMuted }]}>
+              Offline — menampilkan data terakhir yang tersimpan
+            </Text>
+          </View>
+        )}
+        {pendingSync > 0 && (
+          <View style={[styles.offlineBar, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Ionicons name="sync-outline" size={14} color={palette.primary} />
+            <Text style={[styles.offlineText, { color: palette.textMuted }]}>
+              {pendingSync} aksi menunggu dikirim otomatis saat online
+            </Text>
+          </View>
+        )}
         {/* Pemilih provinsi */}
         <TouchableOpacity
           onPress={() => setProvModal(true)}
@@ -858,6 +935,17 @@ const styles = StyleSheet.create({
   chartHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   statRow: { flexDirection: 'row', marginTop: 10 },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  offlineBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  offlineText: { fontSize: 12, flex: 1, fontWeight: '600' },
   provButton: {
     flexDirection: 'row',
     alignItems: 'center',
