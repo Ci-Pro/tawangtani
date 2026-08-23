@@ -18,7 +18,7 @@ async function rest(
       apikey: b.key,
       Authorization: `Bearer ${b.key}`,
       'Content-Type': 'application/json',
-      Prefer: method === 'GET' ? '' : 'return=minimal',
+      Prefer: method === 'GET' ? '' : method === 'POST' ? 'return=representation' : 'return=minimal',
     },
     body: body ? JSON.stringify(body) : undefined,
   });
