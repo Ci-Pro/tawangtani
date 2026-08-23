@@ -38,34 +38,76 @@ interface ORResponse {
 const REFERER = 'https://github.com/Ci-Pro/tawangtani';
 const TITLE = 'TAWANGTANI';
 
-function candidateModels(preferred?: string): string[] {
-  const list = preferred ? [preferred] : [];
-  return [...new Set([...list, config.openrouter.model, ...config.openrouter.fallbackModels])];
+interface Provider {
+  name: 'gemini' | 'openrouter';
+  baseUrl: string;
+  apiKey: string;
+  headers: Record<string, string>;
+}
+
+function providers(): Provider[] {
+  const list: Provider[] = [];
+  if (config.gemini.apiKey) {
+    list.push({
+      name: 'gemini',
+      baseUrl: config.gemini.baseUrl,
+      apiKey: config.gemini.apiKey,
+      headers: { Authorization: `Bearer ${config.gemini.apiKey}` },
+    });
+  }
+  if (config.openrouter.apiKey) {
+    list.push({
+      name: 'openrouter',
+      baseUrl: config.openrouter.baseUrl,
+      apiKey: config.openrouter.apiKey,
+      headers: {
+        Authorization: `Bearer ${config.openrouter.apiKey}`,
+        'HTTP-Referer': REFERER,
+        'X-Title': TITLE,
+      },
+    });
+  }
+  return list;
+}
+
+/** Urutan percobaan: Gemini (utama) -> model fallback Gemini -> OpenRouter -> fallback OR. */
+function candidateCalls(preferred?: string): Array<{ provider: Provider; model: string }> {
+  const out: Array<{ provider: Provider; model: string }> = [];
+  for (const p of providers()) {
+    const models =
+      p.name === 'gemini'
+        ? [config.gemini.model, ...config.gemini.fallbackModels]
+        : [config.openrouter.model, ...config.openrouter.fallbackModels];
+    for (const m of models) out.push({ provider: p, model: m });
+  }
+  if (preferred) {
+    // Model eksplisit dicoba lebih dulu pada penyedia pertama yang tersedia
+    out.unshift({ provider: providers()[0], model: preferred });
+  }
+  return out.filter((c) => c.provider);
 }
 
 async function callOnce(
+  provider: Provider,
   model: string,
   messages: ORMessage[],
   tools?: ORToolSchema[],
-  toolChoice: 'auto' | 'required' = 'auto'
+  toolChoice: 'auto' | 'required' = 'auto',
+  maxTokens = 1400,
+  temperature = 0.3
 ): Promise<ORResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60000);
   try {
-    const res = await fetch(`${config.openrouter.baseUrl}/chat/completions`, {
+    const res = await fetch(`${provider.baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.openrouter.apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': REFERER,
-        'X-Title': TITLE,
-      },
+      headers: { ...provider.headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
         messages,
         ...(tools && tools.length ? { tools, tool_choice: toolChoice } : {}),
-        temperature: 0.3,
-        max_tokens: 1400,
+        temperature,
+        max_tokens: maxTokens,
       }),
       signal: controller.signal,
     });
@@ -91,16 +133,16 @@ export async function chatCompletion(
   preferredModel?: string,
   toolChoice: 'auto' | 'required' = 'auto'
 ): Promise<CompletionResult> {
-  if (!config.openrouter.apiKey) {
-    throw new Error('OPENROUTER_API_KEY belum diatur di server');
+  if (!hasLlmKey()) {
+    throw new Error('GEMINI_API_KEY / OPENROUTER_API_KEY belum diatur di server');
   }
 
   let lastError: Error | null = null;
 
-  for (const model of candidateModels(preferredModel)) {
+  for (const { provider, model } of candidateCalls(preferredModel)) {
     for (const attemptTools of tools ? [tools] : []) {
       try {
-        const json = await callOnce(model, messages, attemptTools, toolChoice);
+        const json = await callOnce(provider, model, messages, attemptTools, toolChoice);
         const choice = json.choices?.[0];
         if (!choice) throw new Error('Respons tanpa pilihan model');
         return {
@@ -112,7 +154,9 @@ export async function chatCompletion(
           })),
         };
       } catch (err) {
-        console.log(`[openrouter] gagal model=${model} tools=${!!attemptTools}: ${(err as Error).message}`);
+        console.log(
+          `[llm] gagal provider=${provider.name} model=${model} tools=${!!attemptTools}: ${(err as Error).message}`
+        );
         lastError = err as Error;
       }
     }
@@ -124,49 +168,36 @@ export async function chatCompletion(
 export async function visionCompletion(
   imageBase64: string,
   prompt: string,
-  preferredModel?: string
+  _preferredModel?: string
 ): Promise<string> {
-  if (!config.openrouter.apiKey) {
-    throw new Error('OPENROUTER_API_KEY belum diatur di server');
+  if (!hasLlmKey()) {
+    throw new Error('GEMINI_API_KEY / OPENROUTER_API_KEY belum diatur di server');
   }
   const messages: ORMessage[] = [
     {
       role: 'user',
-      content: null as unknown as string,
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+      ] as unknown as string,
     },
   ];
-  messages[0] = {
-    role: 'user',
-    content: [
-      { type: 'text', text: prompt },
-      {
-        type: 'image_url',
-        image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
-      },
-    ] as unknown as string,
-  };
 
   let lastError: Error | null = null;
-  for (const model of candidateModels(preferredModel || config.openrouter.visionModel)) {
+  for (const { provider, model } of candidateCalls(config.gemini.apiKey ? undefined : config.openrouter.visionModel)) {
     try {
-      const res = await fetch(`${config.openrouter.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${config.openrouter.apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': REFERER,
-          'X-Title': TITLE,
-        },
-        body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 900 }),
-      });
-      const json = (await res.json().catch(() => ({}))) as ORResponse;
-      if (!res.ok) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
+      const json = await callOnce(provider, model, messages, undefined, 'auto', 900, 0.2);
       const text = json.choices?.[0]?.message?.content ?? '';
       if (!text) throw new Error('Respons kosong dari model');
       return text;
     } catch (err) {
+      console.log(`[llm] vision gagal provider=${provider.name} model=${model}: ${(err as Error).message}`);
       lastError = err as Error;
     }
   }
   throw lastError ?? new Error('Semua model vision gagal');
+}
+
+function hasLlmKey(): boolean {
+  return config.gemini.apiKey.length > 0 || config.openrouter.apiKey.length > 0;
 }

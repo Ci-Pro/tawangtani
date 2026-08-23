@@ -23,12 +23,22 @@ export const config = {
       .map((m) => m.trim())
       .filter(Boolean),
   },
+  gemini: {
+    apiKey: env('GEMINI_API_KEY'),
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    // Urutan: Flash (kualitas agentic terbaik) lalu Flash-Lite (kuota harian lebih besar)
+    model: env('GEMINI_MODEL', 'gemini-2.5-flash'),
+    fallbackModels: env('GEMINI_FALLBACK_MODELS', 'gemini-2.5-flash-lite')
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean),
+  },
   adminToken: env('ADMIN_TOKEN', 'dev-admin-token'),
   cronSecret: env('CRON_SECRET', ''),
 };
 
 export function hasApiKey(): boolean {
-  return config.openrouter.apiKey.length > 0;
+  return config.gemini.apiKey.length > 0 || config.openrouter.apiKey.length > 0;
 }
 
 export function hasSupabase(): boolean {
