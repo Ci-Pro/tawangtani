@@ -2,6 +2,12 @@ import { Router, Request, Response } from 'express';
 import { listMarketPrices, upsertMarketPrices } from '../store/marketPrices';
 import { guidanceFor, refreshPrices, SOURCE_LABEL, toView } from '../services/marketData';
 import { getSeries, snapshotToday } from '../services/marketHistory';
+import {
+  aggregateFarmer,
+  insertFarmerPrice,
+  myFarmerPrices,
+  recentFarmerPrices,
+} from '../store/farmerPrices';
 import { config } from '../config';
 import { requireSupabaseUser } from '../middleware/supabaseUser';
 
@@ -185,6 +191,103 @@ marketRouter.post('/ingest', requireSupabaseUser, async (req: Request, res: Resp
     }
     await upsertMarketPrices(updates);
     res.json({ ok: true, updated: updates.length, province });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/**
+ * Laporan harga petani: jual (harga di petani) / beli (harga eceran kios).
+ * Moderasi otomatis: disetujui bila masih dalam 2,5x harga referensi resmi.
+ */
+marketRouter.post('/report', requireSupabaseUser, async (req: Request, res: Response) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const user = (req as Request & { sbUser?: { id: string } }).sbUser;
+    if (!user) {
+      res.status(401).json({ error: 'Login diperlukan' });
+      return;
+    }
+    const commodity = String(body.commodity ?? '');
+    if (KNOWN_COMMODITIES[commodity] === undefined) {
+      res.status(400).json({ error: 'Komoditas tidak dikenal' });
+      return;
+    }
+    const price = Math.round(Number(body.price));
+    if (!Number.isFinite(price) || price < 500 || price > 10_000_000) {
+      res.status(400).json({ error: 'Harga tidak wajar (500 - 10.000.000)' });
+      return;
+    }
+    const role = body.role === 'beli' ? 'beli' : 'jual';
+    const province =
+      String(body.province ?? 'nasional').trim().toLowerCase().slice(0, 40) || 'nasional';
+    const village = String(body.village ?? '').trim().slice(0, 60);
+    const note = String(body.note ?? '').trim().slice(0, 200);
+    const refLevel = role === 'jual' ? 1 : 3;
+    const refRows = await listMarketPrices(commodity, province, refLevel);
+    const ref = refRows[0]?.price ?? 0;
+    let status: 'approved' | 'pending' = 'approved';
+    if (ref > 0) {
+      const ratio = price / ref;
+      if (ratio < 0.4 || ratio > 2.5) status = 'pending';
+    }
+    await insertFarmerPrice({
+      user_id: user.id,
+      commodity,
+      province,
+      village,
+      role,
+      price,
+      unit: KNOWN_COMMODITIES[commodity] ?? 'kg',
+      note,
+      status,
+    });
+    res.json({ ok: true, status });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/** Agregat laporan petani per provinsi (30 hari terakhir). */
+marketRouter.get('/reports', async (req: Request, res: Response) => {
+  try {
+    const province =
+      typeof req.query.province === 'string' && req.query.province
+        ? req.query.province.toLowerCase()
+        : 'nasional';
+    const commodity = typeof req.query.commodity === 'string' ? req.query.commodity : undefined;
+    const daysQ = Number(req.query.days);
+    const days = Number.isFinite(daysQ) && daysQ >= 1 && daysQ <= 90 ? daysQ : 30;
+    const rows = await recentFarmerPrices(province, commodity, days);
+    res.json({
+      province,
+      days,
+      total: rows.length,
+      aggregates: aggregateFarmer(rows),
+      recent: rows.slice(0, 15).map((r) => ({
+        commodity: r.commodity,
+        village: r.village,
+        role: r.role,
+        price: r.price,
+        unit: r.unit,
+        at: r.created_at,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/** Laporan milik pengguna sendiri (termasuk yang pending). */
+marketRouter.get('/my-reports', requireSupabaseUser, async (req: Request, res: Response) => {
+  try {
+    const user = (req as Request & { sbUser?: { id: string } }).sbUser;
+    if (!user) {
+      res.status(401).json({ error: 'Login diperlukan' });
+      return;
+    }
+    const rows = await myFarmerPrices(user.id);
+    res.json({ reports: rows });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
