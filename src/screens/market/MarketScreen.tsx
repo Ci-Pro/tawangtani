@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,6 +19,8 @@ import { PriceChart, ChartPoint } from '@/components/PriceChart';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { syncHargaJikaPerlu, PROVINCE_LIST } from '@/services/kemtanSync';
+import { supabase } from '@/services/supabase';
+import { getExpoPushToken } from '@/services/pushRegister';
 import { fmtNum } from '@/utils/format';
 import { RootProps } from '@/navigation/types';
 
@@ -39,6 +42,24 @@ interface Bucket {
   min: number;
   max: number;
   close: number;
+}
+
+interface FarmerAgg {
+  commodity: string;
+  count: number;
+  avgSell: number | null;
+  avgBuy: number | null;
+  min: number;
+  max: number;
+}
+
+interface FarmerRecent {
+  commodity: string;
+  village: string;
+  role: 'jual' | 'beli';
+  price: number;
+  unit: string;
+  at?: string;
 }
 
 const LABELS: Record<string, string> = {
@@ -110,6 +131,24 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const [chartLoading, setChartLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
+  // Laporan petani
+  const [farmerAgg, setFarmerAgg] = React.useState<FarmerAgg[]>([]);
+  const [farmerRecent, setFarmerRecent] = React.useState<FarmerRecent[]>([]);
+  const [reportModal, setReportModal] = React.useState(false);
+  const [repCommodity, setRepCommodity] = React.useState<string>('cabai_rawit_merah');
+  const [repRole, setRepRole] = React.useState<'jual' | 'beli'>('jual');
+  const [repPrice, setRepPrice] = React.useState('');
+  const [repVillage, setRepVillage] = React.useState('');
+  const [repStatus, setRepStatus] = React.useState<string>('');
+  const [repSending, setRepSending] = React.useState(false);
+
+  // Alarm harga
+  const [alertModal, setAlertModal] = React.useState(false);
+  const [alertDir, setAlertDir] = React.useState<'above' | 'below'>('below');
+  const [alertTarget, setAlertTarget] = React.useState('');
+  const [alertStatus, setAlertStatus] = React.useState<string>('');
+  const [alertSending, setAlertSending] = React.useState(false);
+
   const loadPrices = React.useCallback(
     async (prov?: string, lvl?: number) => {
       if (!backendUrl) return;
@@ -127,6 +166,20 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
     [backendUrl, province, level]
   );
 
+  const loadReports = React.useCallback(async (prov?: string) => {
+    if (!backendUrl) return;
+    const p = prov ?? province;
+    try {
+      const res = await fetch(
+        `${backendUrl.replace(/\/$/, '')}/api/market/reports?province=${encodeURIComponent(p)}&days=30`
+      );
+      if (!res.ok) return;
+      const json = (await res.json()) as { aggregates?: FarmerAgg[]; recent?: FarmerRecent[] };
+      setFarmerAgg(json.aggregates ?? []);
+      setFarmerRecent(json.recent ?? []);
+    } catch {}
+  }, [backendUrl, province]);
+
   React.useEffect(() => {
     Promise.all([AsyncStorage.getItem('market_province'), AsyncStorage.getItem('market_level')]).then(
       ([pv, lv]) => {
@@ -138,6 +191,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           setLevel(l);
         }
         loadPrices(p, l);
+        loadReports(p);
         syncHargaJikaPerlu(p).then(() => loadPrices(p, l));
       }
     );
@@ -150,6 +204,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
     AsyncStorage.setItem('market_province', p);
     setPrices(null);
     loadPrices(p);
+    loadReports(p);
     syncHargaJikaPerlu(p).then(() => loadPrices(p));
   };
 
@@ -185,9 +240,108 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await loadPrices();
+    await Promise.all([loadPrices(), loadReports()]);
     setRefreshing(false);
-  }, [loadPrices]);
+  }, [loadPrices, loadReports]);
+
+  const submitReport = async (): Promise<void> => {
+    if (!backendUrl) return;
+    const price = Math.round(Number(repPrice.replace(/[^\d]/g, '')));
+    if (!Number.isFinite(price) || price < 500) {
+      setRepStatus('Isi harga yang wajar');
+      return;
+    }
+    setRepSending(true);
+    setRepStatus('');
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) {
+        setRepStatus('Masuk dulu lewat layar Profil untuk melapor.');
+        return;
+      }
+      const res = await fetch(`${backendUrl.replace(/\/$/, '')}/api/market/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          commodity: repCommodity,
+          price,
+          role: repRole,
+          province,
+          village: repVillage.trim(),
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; status?: string; error?: string };
+      if (json.ok && json.status === 'approved') {
+        setRepStatus('Terima kasih! Laporan Anda langsung tampil.');
+        setRepPrice('');
+        setRepVillage('');
+        loadReports();
+        setTimeout(() => {
+          setReportModal(false);
+          setRepStatus('');
+        }, 1500);
+      } else if (json.ok && json.status === 'pending') {
+        setRepStatus('Diterima & sedang diverifikasi (harga menyimpang jauh dari acuan).');
+      } else {
+        setRepStatus(json.error ?? 'Gagal mengirim');
+      }
+    } catch {
+      setRepStatus('Gagal mengirim, coba lagi');
+    } finally {
+      setRepSending(false);
+    }
+  };
+
+  const createAlert = async (): Promise<void> => {
+    if (!backendUrl) return;
+    const target = Math.round(Number(alertTarget.replace(/[^\d]/g, '')));
+    if (!Number.isFinite(target) || target < 500) {
+      setAlertStatus('Isi target harga yang wajar');
+      return;
+    }
+    setAlertSending(true);
+    setAlertStatus('');
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) {
+        setAlertStatus('Masuk dulu lewat layar Profil untuk memasang alarm.');
+        return;
+      }
+      const expoToken = await getExpoPushToken();
+      if (!expoToken) {
+        setAlertStatus('Izinkan notifikasi untuk aplikasi ini terlebih dahulu.');
+        return;
+      }
+      const res = await fetch(`${backendUrl.replace(/\/$/, '')}/api/push/alerts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          expoToken,
+          commodity: selected,
+          target,
+          direction: alertDir,
+          province,
+          level,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) {
+        setAlertStatus('Alarm aktif! Anda akan diberi notifikasi saat harga tersentuh.');
+        setTimeout(() => {
+          setAlertModal(false);
+          setAlertStatus('');
+        }, 1700);
+      } else {
+        setAlertStatus(json.error ?? 'Gagal membuat alarm');
+      }
+    } catch {
+      setAlertStatus('Gagal, coba lagi');
+    } finally {
+      setAlertSending(false);
+    }
+  };
 
   const current = prices?.find((p) => p.commodity === selected);
   const points: ChartPoint[] = (buckets ?? []).map((b) => ({ label: b.label, value: b.close }));
@@ -341,6 +495,33 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           </Card>
         )}
 
+        {/* Aksi: lapor harga & alarm */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            onPress={() => {
+              setRepCommodity(selected);
+              setReportModal(true);
+            }}
+            style={[styles.actionBtn, { backgroundColor: palette.primarySoft, borderColor: palette.primary }]}
+          >
+            <Ionicons name="create-outline" size={16} color={palette.primary} />
+            <Text style={{ color: palette.primary, fontWeight: '800', fontSize: 12.5 }}>
+              Lapor Harga
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (current) setAlertTarget(String(current.price));
+              setAlertStatus('');
+              setAlertModal(true);
+            }}
+            style={[styles.actionBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+          >
+            <Ionicons name="notifications-outline" size={16} color={palette.textMuted} />
+            <Text style={{ color: palette.text, fontWeight: '800', fontSize: 12.5 }}>Alarm Harga</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Tab rentang waktu */}
         <View style={[styles.rangeTabs, { borderColor: palette.border }]}>
           {RANGES.map((r) => (
@@ -433,6 +614,55 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           </Card>
         </TouchableOpacity>
 
+        <SectionHeader title="Laporan Petani" />
+
+        {farmerAgg.length === 0 ? (
+          <Card>
+            <Text style={{ color: palette.textMuted, fontSize: 13 }}>
+              Belum ada laporan harga petani di {PROV_LABEL(province)} bulan ini. Jadi yang pertama
+              dengan menekan tombol Lapor Harga di atas!
+            </Text>
+          </Card>
+        ) : (
+          <>
+            {farmerAgg.slice(0, 6).map((a) => (
+              <TouchableOpacity key={a.commodity} onPress={() => setSelected(a.commodity)}>
+                <Card style={{ marginBottom: 8 }}>
+                  <View style={styles.listRow}>
+                    <Text style={{ color: palette.text, fontWeight: '800', flex: 1 }} numberOfLines={1}>
+                      {LABELS[a.commodity] ?? a.commodity}
+                    </Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ color: palette.text, fontWeight: '900' }}>
+                        {a.avgSell ? `Rp${fmtNum(a.avgSell)}` : `Rp${fmtNum(a.avgBuy ?? 0)}`}
+                        <Text style={{ color: palette.textMuted, fontSize: 11, fontWeight: '600' }}>
+                          {a.avgSell ? ' (jual)' : ' (beli)'}
+                        </Text>
+                      </Text>
+                      <Text style={{ color: palette.textMuted, fontSize: 10.5 }}>
+                        {a.count} laporan • Rp{fmtNum(a.min)}–{fmtNum(a.max)}
+                      </Text>
+                    </View>
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            ))}
+            {farmerRecent.length > 0 && (
+              <Card>
+                <Text style={{ color: palette.textMuted, fontSize: 11.5, marginBottom: 6 }}>
+                  Terbaru:
+                </Text>
+                {farmerRecent.slice(0, 5).map((r, i) => (
+                  <Text key={i} style={{ color: palette.text, fontSize: 12, marginBottom: 3 }} numberOfLines={1}>
+                    • {LABELS[r.commodity] ?? r.commodity} Rp{fmtNum(r.price)}/{r.unit}
+                    {r.village ? ` — ${r.village}` : ''} ({r.role})
+                  </Text>
+                ))}
+              </Card>
+            )}
+          </>
+        )}
+
         <SectionHeader title="Semua Komoditas" />
 
         {(prices ?? []).map((p) => (
@@ -501,6 +731,132 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+      <Modal visible={reportModal} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalSheet, { backgroundColor: palette.surface }]}>
+            <View style={styles.modalHead}>
+              <Text style={{ color: palette.text, fontWeight: '900', fontSize: 16 }}>Lapor Harga Nyata</Text>
+              <TouchableOpacity onPress={() => setReportModal(false)}>
+                <Ionicons name="close" size={22} color={palette.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+              {Object.keys(LABELS).map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => setRepCommodity(c)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: repCommodity === c ? palette.primary : palette.surface,
+                      borderColor: repCommodity === c ? palette.primary : palette.border,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: repCommodity === c ? '#fff' : palette.text, fontSize: 12, fontWeight: '700' }}>
+                    {LABELS[c] ?? c}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={[styles.rangeTabs, { borderColor: palette.border }]}>
+              {(['jual', 'beli'] as const).map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => setRepRole(r)}
+                  style={[styles.rangeTab, { backgroundColor: repRole === r ? palette.primary : 'transparent' }]}
+                >
+                  <Text style={{ color: repRole === r ? '#fff' : palette.textMuted, fontWeight: '800', fontSize: 12.5 }}>
+                    {r === 'jual' ? 'Saya Jual' : 'Saya Beli'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              value={repPrice}
+              onChangeText={setRepPrice}
+              keyboardType="number-pad"
+              placeholder={`Harga per kg di ${repRole === 'jual' ? 'petani' : 'kios'} (Rp)`}
+              placeholderTextColor={palette.textMuted}
+              style={[styles.input, { backgroundColor: palette.background, borderColor: palette.border, color: palette.text }]}
+            />
+            <TextInput
+              value={repVillage}
+              onChangeText={setRepVillage}
+              placeholder="Nama desa / pasar (opsional)"
+              placeholderTextColor={palette.textMuted}
+              style={[styles.input, { backgroundColor: palette.background, borderColor: palette.border, color: palette.text }]}
+            />
+            {!!repStatus && (
+              <Text style={{ color: palette.primary, fontSize: 12.5, marginBottom: 8 }}>{repStatus}</Text>
+            )}
+            <TouchableOpacity
+              onPress={submitReport}
+              disabled={repSending}
+              style={{ backgroundColor: palette.primary, borderRadius: 12, paddingVertical: 13, alignItems: 'center', opacity: repSending ? 0.6 : 1 }}
+            >
+              {repSending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontWeight: '900' }}>Kirim Laporan</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={alertModal} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalSheet, { backgroundColor: palette.surface }]}>
+            <View style={styles.modalHead}>
+              <Text style={{ color: palette.text, fontWeight: '900', fontSize: 16 }}>
+                Alarm Harga {LABELS[selected] ?? selected}
+              </Text>
+              <TouchableOpacity onPress={() => setAlertModal(false)}>
+                <Ionicons name="close" size={22} color={palette.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: palette.textMuted, fontSize: 12.5, marginBottom: 10 }}>
+              {PROV_LABEL(province)} • tingkat {LEVEL_NAME[level]} • sekali picu lalu nonaktif otomatis.
+            </Text>
+            <View style={[styles.rangeTabs, { borderColor: palette.border }]}>
+              {(['below', 'above'] as const).map((d) => (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => setAlertDir(d)}
+                  style={[styles.rangeTab, { backgroundColor: alertDir === d ? palette.primary : 'transparent' }]}
+                >
+                  <Text style={{ color: alertDir === d ? '#fff' : palette.textMuted, fontWeight: '800', fontSize: 12.5 }}>
+                    {d === 'below' ? 'Turun di bawah' : 'Naik di atas'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              value={alertTarget}
+              onChangeText={setAlertTarget}
+              keyboardType="number-pad"
+              placeholder="Target harga (Rp)"
+              placeholderTextColor={palette.textMuted}
+              style={[styles.input, { backgroundColor: palette.background, borderColor: palette.border, color: palette.text }]}
+            />
+            {!!alertStatus && (
+              <Text style={{ color: palette.primary, fontSize: 12.5, marginBottom: 8 }}>{alertStatus}</Text>
+            )}
+            <TouchableOpacity
+              onPress={createAlert}
+              disabled={alertSending}
+              style={{ backgroundColor: palette.primary, borderRadius: 12, paddingVertical: 13, alignItems: 'center', opacity: alertSending ? 0.6 : 1 }}
+            >
+              {alertSending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontWeight: '900' }}>Pasang Alarm</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 };
@@ -554,6 +910,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     marginBottom: 10,
+  },
+  actionRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    marginBottom: 8,
   },
   modalBackdrop: {
     flex: 1,
