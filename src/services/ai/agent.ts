@@ -61,10 +61,14 @@ export async function runVisionAgent(
     };
   }
   try {
-    const res = await postJson<BackendResponse>(`${url}/ai/vision`, {
-      imageBase64,
-      context: ctx,
-    });
+    const res = await postJson<BackendResponse>(
+      `${url}/ai/vision`,
+      {
+        imageBase64,
+        context: ctx,
+      },
+      90_000
+    );
     return {
       reply:
         (res.reply ?? '(AI tidak merespons)') +
@@ -93,11 +97,15 @@ async function runBackendAgent(
   const toolsUsed: string[] = [];
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
-    const res = await postJson<BackendResponse>(`${url}/ai/chat`, {
-      messages,
-      tools: TOOLS,
-      context: ctx,
-    });
+    const res = await postJson<BackendResponse>(
+      `${url}/ai/chat`,
+      {
+        messages,
+        tools: TOOLS,
+        context: ctx,
+      },
+      90_000
+    );
 
     if (res.tool_calls?.length) {
       for (const call of res.tool_calls) {

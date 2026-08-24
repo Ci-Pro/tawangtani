@@ -1,12 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { config } from '../config';
 import { loadCatalog, saveCatalog, logAudit } from '../store/catalog';
+import { cached, cacheClear } from '../utils/cache';
 
 export const productsRouter = Router();
 
 productsRouter.get('/', async (_req: Request, res: Response) => {
   try {
-    const products = await loadCatalog();
+    const products = await cached('catalog', 5 * 60_000, loadCatalog);
     res.json({ products });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -26,6 +27,7 @@ productsRouter.put('/', async (req: Request, res: Response) => {
   }
   try {
     const count = await saveCatalog(products as Array<Record<string, unknown>>, 'admin');
+    cacheClear('catalog');
     res.json({ ok: true, count });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

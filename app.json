@@ -8,14 +8,14 @@
         "projectId": "d97670b3-f136-4226-9ab1-d4f60303eb16"
       }
     },
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#14532d"
+      "backgroundColor": "#ffffff"
     },
     "notification": {
       "icon": "./assets/adaptive-icon.png",
@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.tawangtani.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

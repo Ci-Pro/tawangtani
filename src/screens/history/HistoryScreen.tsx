@@ -34,7 +34,7 @@ const HistoryScreen: React.FC = () => {
           subtitle="Hasil kalkulasi yang Anda simpan akan muncul di sini."
         />
       ) : (
-        [...items].reverse().map((item) => {
+        [...items].slice(-100).reverse().map((item) => {
           const meta = TYPE_META[item.type];
           return (
             <Card key={item.id}>

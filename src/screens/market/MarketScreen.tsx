@@ -92,6 +92,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const [chartLoading, setChartLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const [offline, setOffline] = React.useState(false);
+  const [loadError, setLoadError] = React.useState(false);
   const [pendingSync, setPendingSync] = React.useState(0);
 
   // Laporan petani
@@ -126,12 +127,17 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         const rows = json.prices ?? [];
         setPrices(rows);
         setOffline(false);
+        setLoadError(false);
         saveCache(`market_${p}_${l}`, rows);
       } catch {
         const cached = await loadCache<PriceView[]>(`market_${p}_${l}`);
         if (cached && cached.data.length > 0) {
           setPrices(cached.data);
           setOffline(true);
+          setLoadError(false);
+        } else {
+          setPrices([]);
+          setLoadError(true);
         }
       }
     },
@@ -405,6 +411,45 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           </Text>
           <Ionicons name="chevron-down" size={15} color={palette.textMuted} />
         </TouchableOpacity>
+
+        {loadError ? (
+          <View
+            style={{
+              alignItems: 'center',
+              padding: 24,
+              marginVertical: 10,
+              backgroundColor: palette.surface,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: palette.border,
+            }}
+          >
+            <Ionicons name="cloud-offline-outline" size={34} color={palette.textMuted} />
+            <Text style={{ color: palette.text, fontWeight: '800', marginTop: 10 }}>
+              Gagal memuat harga
+            </Text>
+            <Text style={{ color: palette.textMuted, fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+              Periksa koneksi internet Anda lalu coba lagi.
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setLoadError(false);
+                setPrices(null);
+                loadPrices();
+                loadReports();
+              }}
+              style={{
+                marginTop: 12,
+                paddingHorizontal: 18,
+                paddingVertical: 8,
+                borderRadius: 999,
+                backgroundColor: palette.primary,
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12.5 }}>Coba Lagi</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Pemilih tingkat pasar (PIHPS) */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>

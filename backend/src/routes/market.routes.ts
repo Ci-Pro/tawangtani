@@ -10,6 +10,9 @@ import {
 } from '../store/farmerPrices';
 import { config } from '../config';
 import { requireSupabaseUser } from '../middleware/supabaseUser';
+import { cached, cacheClear } from '../utils/cache';
+import { resolveCommodity } from '../services/commodityMatch';
+import { resolveProvince } from '../services/provinceMatch';
 
 export const marketRouter = Router();
 
@@ -53,11 +56,18 @@ const KNOWN_COMMODITIES: Record<string, string> = {
 
 marketRouter.get('/prices', async (req: Request, res: Response) => {
   try {
-    const commodity = typeof req.query.commodity === 'string' ? req.query.commodity : undefined;
-    const province = typeof req.query.province === 'string' ? req.query.province : undefined;
+    const commodityQ = typeof req.query.commodity === 'string' ? req.query.commodity : undefined;
+    const provinceQ = typeof req.query.province === 'string' ? req.query.province : undefined;
     const levelQ = Number(req.query.level);
     const level = [1, 2, 3].includes(levelQ) ? levelQ : undefined;
-    const rows = await listMarketPrices(commodity, province, level);
+    // Toleran terhadap sebutan awam: "gkp" → gabah_kering_panen, "jogja" → d.i yogyakarta
+    const [commodity, province] = await Promise.all([
+      resolveCommodity(commodityQ),
+      resolveProvince(provinceQ).then((p) => p ?? provinceQ),
+    ]);
+    const rows = await cached(`prices|${commodity ?? '*'}|${province ?? '*'}|${level ?? '*'}`, 5 * 60_000, () =>
+      listMarketPrices(commodity, province ?? undefined, level)
+    );
     res.json({
       sourceLabel: SOURCE_LABEL,
       prices: rows.map(toView).map((v) => ({ ...v, hint: guidanceFor(v) })),
@@ -69,11 +79,11 @@ marketRouter.get('/prices', async (req: Request, res: Response) => {
 
 marketRouter.get('/history', async (req: Request, res: Response) => {
   try {
-    const commodity = typeof req.query.commodity === 'string' ? req.query.commodity : '';
+    const commodityQ = typeof req.query.commodity === 'string' ? req.query.commodity : '';
     const range = String(req.query.range ?? 'daily');
-    const province =
+    const provinceQ =
       typeof req.query.province === 'string' && req.query.province ? req.query.province : 'nasional';
-    if (!commodity) {
+    if (!commodityQ) {
       res.status(400).json({ error: 'parameter commodity wajib' });
       return;
     }
@@ -83,7 +93,11 @@ marketRouter.get('/history', async (req: Request, res: Response) => {
     }
     const levelQ = Number(req.query.level);
     const level = [1, 2, 3].includes(levelQ) ? levelQ : 3;
-    const series = await getSeries(commodity, range as 'daily', province, level);
+    const commodity = (await resolveCommodity(commodityQ)) ?? commodityQ;
+    const province = (await resolveProvince(provinceQ)) ?? provinceQ;
+    const series = await cached(`hist|${commodity}|${range}|${province}|${level}`, 10 * 60_000, () =>
+      getSeries(commodity, range as 'daily', province, level)
+    );
     res.json({ commodity, ...series });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -97,6 +111,7 @@ marketRouter.post('/refresh', async (req: Request, res: Response) => {
       return;
     }
     const result = await refreshPrices();
+    cacheClear();
     res.json({ ok: true, ...result });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -110,6 +125,7 @@ marketRouter.post('/snapshot', async (req: Request, res: Response) => {
       return;
     }
     const saved = await snapshotToday();
+    cacheClear();
     res.json({ ok: true, saved });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -190,6 +206,7 @@ marketRouter.post('/ingest', requireSupabaseUser, async (req: Request, res: Resp
       }
     }
     await upsertMarketPrices(updates);
+    cacheClear();
     res.json({ ok: true, updated: updates.length, province });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -242,6 +259,7 @@ marketRouter.post('/report', requireSupabaseUser, async (req: Request, res: Resp
       note,
       status,
     });
+    cacheClear('reports|');
     res.json({ ok: true, status });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -258,7 +276,9 @@ marketRouter.get('/reports', async (req: Request, res: Response) => {
     const commodity = typeof req.query.commodity === 'string' ? req.query.commodity : undefined;
     const daysQ = Number(req.query.days);
     const days = Number.isFinite(daysQ) && daysQ >= 1 && daysQ <= 90 ? daysQ : 30;
-    const rows = await recentFarmerPrices(province, commodity, days);
+    const rows = await cached(`reports|${province}|${commodity ?? '*'}|${days}`, 30_000, () =>
+      recentFarmerPrices(province, commodity, days)
+    );
     res.json({
       province,
       days,

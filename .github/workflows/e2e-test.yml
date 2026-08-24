@@ -1,0 +1,39 @@
+name: e2e-test
+
+# Uji end-to-end seluruh perjalanan pengguna terhadap produksi pasca-deploy.
+# Tidak butuh secret: anon key Supabase adalah kunci publik klien.
+on:
+  workflow_dispatch:
+    inputs:
+      skip_ai:
+        description: 'Lewati panggilan AI (hemat kuota)'
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/e2e-test.yml'
+
+concurrency:
+  group: e2e-production
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: https://tawangtani-flame.vercel.app
+      SUPABASE_URL: https://bpiqgbjlwkdpnlgvxdrx.supabase.co
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwaXFnYmpsd2tkcG5sZ3Z4ZHJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMTUxOTIsImV4cCI6MjEwMjg5MTE5Mn0.BnbUUwfwyJnbrhVMV3LlCjoNwRbj4Y5sQcAkfxp3fOQ
+      SKIP_AI: ${{ github.event.inputs.skip_ai == 'true' && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Jalankan E2E lengkap
+        run: node backend/scripts/e2e.mjs
