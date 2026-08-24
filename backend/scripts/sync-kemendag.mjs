@@ -82,20 +82,31 @@ async function fetchPage(tanggal, skip, take) {
   return Array.isArray(json.data) ? json.data : [];
 }
 
+async function fetchPageRetry(tanggal, skip, take) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await fetchPage(tanggal, skip, take);
+    } catch {
+      if (attempt === 1) return null;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  return null;
+}
+
 async function fetchDay(tanggal) {
-  const take = process.env.LIMIT_PAGES === '1' ? 1500 : 1500;
-  const skips = Array.from({ length: process.env.LIMIT_PAGES === '1' ? 1 : 12 }, (_, i) => i * take);
+  const take = 1500;
+  const skips = Array.from({ length: process.env.LIMIT_PAGES === '1' ? 1 : 16 }, (_, i) => i * take);
   const settled = await Promise.all(
-    skips.map(async (skip) => {
-      try {
-        return { skip, rows: await fetchPage(tanggal, skip, take) };
-      } catch {
-        return { skip, rows: [] };
-      }
-    })
+    skips.map((skip) => fetchPageRetry(tanggal, skip, take).then((rows) => ({ skip, rows })))
   );
   const out = [];
+  let failedPages = 0;
   for (const { rows } of settled.sort((a, b) => a.skip - b.skip)) {
+    if (rows === null) {
+      failedPages++;
+      continue;
+    }
     out.push(...rows);
     if (rows.length < take) break;
   }
