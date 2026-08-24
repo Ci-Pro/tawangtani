@@ -139,7 +139,7 @@ async function rest(pathUrl: string, method: string, body?: unknown, prefer?: st
   return method === 'GET' ? await res.json() : null;
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   const secret = Deno.env.get('CRON_SYNC_SECRET') ?? '';
   if (!secret || req.headers.get('x-cron-secret') !== secret) {
     return new Response(JSON.stringify({ error: 'tidak diizinkan' }), { status: 401 });
@@ -297,4 +297,20 @@ Deno.serve(async (req: Request) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
+}
+
+Deno.serve((req: Request) => {
+  // pg_net/pg_cron memutus koneksi setelah 5 dtk; proses sinkron tetap
+  // dikerjakan di latar sehingga jadwal harian tidak gagal.
+  const bg = handle(req);
+  const edge = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } })
+    .EdgeRuntime;
+  if (edge?.waitUntil) {
+    edge.waitUntil(bg.catch((e) => console.error('[sync-kemendag] latar gagal:', e)));
+    return new Response(JSON.stringify({ ok: true, queued: true }), {
+      status: 202,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  return bg;
 });
