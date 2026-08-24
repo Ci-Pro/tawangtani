@@ -1,0 +1,49 @@
+name: sinkron-harga
+
+on:
+  schedule:
+    # 09:00 dan 21:00 WIB
+    - cron: '0 2 * * *'
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+    inputs:
+      provinsi:
+        description: 'Nama provinsi tunggal (kosong = semua 38)'
+        required: false
+        default: ''
+  push:
+    paths:
+      - '.github/workflows/sinkron-harga.yml'
+      - 'backend/scripts/sync-prices.mjs'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Uji jangkauan mirror Kementan
+        id: probe
+        run: |
+          KODE=$(curl -sS -o /tmp/probe.html -w "%{http_code}" \
+            -A "Mozilla/5.0" \
+            "https://app3.pertanian.go.id/panelharga/export_harian_excel.php?tanggal_mulai=$(date -d '-3 days' +%F)&tanggal_akhir=$(date +%F)&level_harga=3&kode_wilayah=35") || KODE="000"
+          echo "status=$KODE" >> "$GITHUB_OUTPUT"
+          echo "HTTP status dari runner: $KODE"
+          wc -c /tmp/probe.html || true
+          grep -c "<table" /tmp/probe.html || echo "tabel=0"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Jalankan sinkron PIHPS (butuh secrets)
+        if: env.SUPABASE_URL != ''
+        env:
+          PROVINSI: ${{ github.event.inputs.provinsi }}
+        working-directory: backend
+        run: node scripts/sync-prices.mjs
