@@ -83,14 +83,21 @@ async function fetchPage(tanggal, skip, take) {
 }
 
 async function fetchDay(tanggal) {
+  const take = process.env.LIMIT_PAGES === '1' ? 1500 : 1500;
+  const skips = Array.from({ length: process.env.LIMIT_PAGES === '1' ? 1 : 12 }, (_, i) => i * take);
+  const settled = await Promise.all(
+    skips.map(async (skip) => {
+      try {
+        return { skip, rows: await fetchPage(tanggal, skip, take) };
+      } catch {
+        return { skip, rows: [] };
+      }
+    })
+  );
   const out = [];
-  const take = 3000;
-  for (let skip = 0; ; skip += take) {
-    const page = await fetchPage(tanggal, skip, take);
-    out.push(...page);
-    if (process.env.LIMIT_PAGES === '1') break;
-    if (page.length < take || skip > 60_000) break;
-    await new Promise((r) => setTimeout(r, 1200));
+  for (const { rows } of settled.sort((a, b) => a.skip - b.skip)) {
+    out.push(...rows);
+    if (rows.length < take) break;
   }
   return out;
 }
@@ -117,8 +124,9 @@ async function rest(pathUrl, method, body, prefer) {
 }
 
 function transform(rawRows, tanggal, nowIso, prevByKey) {
-  // pilih kandidat terbaik per (komoditas|provinsi|level) memakai prioritas varian
-  const best = new Map();
+  // kumpulkan per varian (rata-rata bila ada baris per kabupaten),
+  // lalu pilih varian prioritas tertinggi per (komoditas|provinsi|level)
+  const grouped = new Map();
   let skippedUnknownVariant = 0;
   let skippedUnknownProvince = 0;
 
@@ -139,8 +147,19 @@ function transform(rawRows, tanggal, nowIso, prevByKey) {
     if (!Number.isFinite(price) || price < 500 || price > 10_000_000) continue;
     const level = Number(r.level);
     if (![1, 2, 3].includes(level)) continue;
-    const key = `${commodity}|${prov}|${level}`;
-    const cand = { commodity, prov, level, price, prio };
+    const gkey = `${vName}|${prov}|${level}`;
+    const old = grouped.get(gkey);
+    if (old) old.prices.push(price);
+    else grouped.set(gkey, { commodity, prov, level, prio, prices: [price] });
+  }
+
+  const best = new Map();
+  for (const g of grouped.values()) {
+    const key = `${g.commodity}|${g.prov}|${g.level}`;
+    const cand = {
+      commodity: g.commodity, prov: g.prov, level: g.level, prio: g.prio,
+      price: Math.round(g.prices.reduce((a, b) => a + b, 0) / g.prices.length),
+    };
     const old = best.get(key);
     if (!old || cand.prio < old.prio) best.set(key, cand);
   }

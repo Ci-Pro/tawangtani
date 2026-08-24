@@ -91,13 +91,24 @@ async function fetchPage(tanggal: string, skip: number, take: number): Promise<S
 }
 
 async function fetchDay(tanggal: string): Promise<SpRow[]> {
+  const take = 1500;
+  // Waktu respons SP2KP linier terhadap jumlah baris (~19 ms/baris), jadi halaman
+  // besar selalu timeout. Ambil banyak halaman kecil SECARA PARALEL (spekulatif),
+  // lalu buang halaman setelah halaman pertama yang tidak penuh.
+  const skips = Array.from({ length: 12 }, (_, i) => i * take);
+  const settled = await Promise.all(
+    skips.map(async (skip) => {
+      try {
+        return { skip, rows: await fetchPage(tanggal, skip, take) };
+      } catch {
+        return { skip, rows: [] as SpRow[] };
+      }
+    })
+  );
   const out: SpRow[] = [];
-  const take = 3000;
-  for (let skip = 0; ; skip += take) {
-    const page = await fetchPage(tanggal, skip, take);
-    out.push(...page);
-    if (page.length < take || skip > 60_000) break;
-    await new Promise((r) => setTimeout(r, 1200));
+  for (const { rows } of settled.sort((a, b) => a.skip - b.skip)) {
+    out.push(...rows);
+    if (rows.length < take) break;
   }
   return out;
 }
@@ -130,8 +141,12 @@ export async function runKemendagSync(requestedDate?: string): Promise<SyncResul
   if (!rows || rows.length === 0) throw new Error('Tidak ada data SP2KP pada tanggal mana pun');
   const fetched = rows.length;
 
-  // prioritas varian terbaik per (komoditas|provinsi|level)
-  const best = new Map<string, { commodity: string; prov: string; level: number; price: number; prio: number }>();
+  // Kumpulkan harga per varian; bila satu provinsi punya banyak baris
+  // (per kabupaten), rata-ratakan — jangan pilih sembarangan.
+  const grouped = new Map<
+    string,
+    { commodity: string; prov: string; level: number; prio: number; prices: number[] }
+  >();
   let unknownVariants = 0;
 
   for (const r of rows) {
@@ -148,9 +163,22 @@ export async function runKemendagSync(requestedDate?: string): Promise<SyncResul
     if (!Number.isFinite(price) || price < 500 || price > 10_000_000) continue;
     const level = Number(r.level);
     if (![1, 2, 3].includes(level)) continue;
-    const key = `${commodity}|${prov}|${level}`;
+    const gkey = `${vName}|${prov}|${level}`;
+    const old = grouped.get(gkey);
+    if (old) old.prices.push(price);
+    else grouped.set(gkey, { commodity, prov, level, prio, prices: [price] });
+  }
+
+  // pilih varian prioritas tertinggi per (komoditas|provinsi|level)
+  const best = new Map<
+    string,
+    { commodity: string; prov: string; level: number; price: number; prio: number }
+  >();
+  for (const g of grouped.values()) {
+    const key = `${g.commodity}|${g.prov}|${g.level}`;
+    const cand = { ...g, price: Math.round(g.prices.reduce((a, b) => a + b, 0) / g.prices.length) };
     const old = best.get(key);
-    if (!old || prio < old.prio) best.set(key, { commodity, prov, level, price, prio });
+    if (!old || cand.prio < old.prio) best.set(key, cand);
   }
 
   // prev_price dari baris sumber ini yang sudah tersimpan
