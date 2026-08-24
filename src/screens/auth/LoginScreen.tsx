@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -47,7 +48,7 @@ const LoginScreen: React.FC = () => {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor: palette.background }]}>
         <View style={styles.brand}>
-          <Text style={{ fontSize: 52 }}>🌾</Text>
+          <Image source={require('@/assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />
           <Text style={[styles.brandName, { color: palette.primary }]}>TAWANGTANI</Text>
           <Text style={[styles.tagline, { color: palette.textMuted }]}>
             Asisten Pertanian Digital Anda
@@ -95,6 +96,12 @@ const styles = StyleSheet.create({
   brand: {
     alignItems: 'center',
     marginBottom: 36,
+  },
+  brandLogo: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    marginBottom: 4,
   },
   brandName: {
     fontSize: 30,
