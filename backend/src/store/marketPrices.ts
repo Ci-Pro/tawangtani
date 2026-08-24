@@ -36,12 +36,20 @@ export async function listMarketPrices(
 }
 
 export async function listProvinces(): Promise<string[]> {
-  const res = await fetch(`${config.supabase.url}/rest/v1/market_prices?select=province`, {
-    headers: headers(),
-  });
-  if (!res.ok) return [];
-  const rows = (await res.json()) as Array<{ province: string }>;
-  return [...new Set(rows.map((r) => r.province))];
+  // Paginasi penuh: batas bawaan 1.000 baris PostgREST membuat daftar provinsi
+  // parsial ketika tabel membesar (sinkron SP2KP).
+  const seen = new Set<string>();
+  for (let offset = 0; offset < 30_000; offset += 1000) {
+    const res = await fetch(
+      `${config.supabase.url}/rest/v1/market_prices?select=province&limit=1000&offset=${offset}`,
+      { headers: headers() }
+    );
+    if (!res.ok) break;
+    const rows = (await res.json()) as Array<{ province: string }>;
+    for (const r of rows) seen.add(r.province);
+    if (rows.length < 1000) break;
+  }
+  return [...seen];
 }
 
 export async function upsertMarketPrices(rows: MarketPriceRow[]): Promise<void> {

@@ -212,10 +212,16 @@ Deno.serve(async (req: Request) => {
       if (!old || cand.prio < old.prio) best.set(key, cand);
     }
 
-    const existing = (await rest(
-      'market_prices?select=commodity,province,level,price&source=eq.sp2kp:kemendag-api',
-      'GET'
-    )) as Array<{ commodity: string; province: string; level: number; price: number }>;
+    // paginasi penuh (batas PostgREST 1.000 baris)
+    const existing: Array<{ commodity: string; province: string; level: number; price: number }> = [];
+    for (let offset = 0; offset < 30_000; offset += 1000) {
+      const pageRows = (await rest(
+        `market_prices?select=commodity,province,level,price&source=eq.sp2kp:kemendag-api&limit=1000&offset=${offset}`,
+        'GET'
+      )) as Array<{ commodity: string; province: string; level: number; price: number }>;
+      existing.push(...pageRows);
+      if (pageRows.length < 1000) break;
+    }
     const prevByKey = new Map(
       existing.map((r) => [`${r.commodity}|${r.province}|${r.level}`, r.price])
     );

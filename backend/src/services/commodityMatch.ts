@@ -64,14 +64,22 @@ function headers(): Record<string, string> {
 export async function listCommoditySlugs(): Promise<string[]> {
   if (cache.slugs.length > 0 && Date.now() - cache.at < TTL_MS) return cache.slugs;
   try {
-    const res = await fetch(`${config.supabase.url}/rest/v1/market_prices?select=commodity`, {
-      headers: headers(),
-    });
-    if (!res.ok) return cache.slugs;
-    const rows = (await res.json()) as Array<{ commodity: string }>;
-    const slugs = [...new Set(rows.map((r) => r.commodity))].sort();
-    cache = { slugs, at: Date.now() };
-    return slugs;
+    // Paginasi wajib: tanpa itu PostgREST memotong di 1.000 baris pertama dan
+    // daftar slug menjadi parsial saat tabel bertambah (mis. sinkron SP2KP).
+    const seen = new Set<string>();
+    for (let offset = 0; offset < 30_000; offset += 1000) {
+      const res = await fetch(
+        `${config.supabase.url}/rest/v1/market_prices?select=commodity&limit=1000&offset=${offset}`,
+        { headers: headers() }
+      );
+      if (!res.ok) break;
+      const rows = (await res.json()) as Array<{ commodity: string }>;
+      for (const r of rows) seen.add(r.commodity);
+      if (rows.length < 1000) break;
+    }
+    const slugs = [...seen].sort();
+    if (slugs.length > 0) cache = { slugs, at: Date.now() };
+    return slugs.length > 0 ? slugs : cache.slugs;
   } catch {
     return cache.slugs;
   }
