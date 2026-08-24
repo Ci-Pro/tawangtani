@@ -26,9 +26,12 @@ export const config = {
   gemini: {
     apiKey: env('GEMINI_API_KEY'),
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    // Urutan: Flash (kualitas agentic terbaik) lalu Flash-Lite (kuota harian lebih besar)
+    // Kuota harian terpisah per model -> fallback lintas generasi menambah kapasitas.
     model: env('GEMINI_MODEL', 'gemini-2.5-flash'),
-    fallbackModels: env('GEMINI_FALLBACK_MODELS', 'gemini-2.5-flash-lite')
+    fallbackModels: env(
+      'GEMINI_FALLBACK_MODELS',
+      'gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3.7-flash'
+    )
       .split(',')
       .map((m) => m.trim())
       .filter(Boolean),

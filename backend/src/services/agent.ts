@@ -84,10 +84,11 @@ function normalizeMessages(input: ChatMessageIn[]): ORMessage[] {
 export async function runAgent(
   inputMessages: ChatMessageIn[],
   ctx: ToolContext
-): Promise<{ reply: string; iterations: number }> {
+): Promise<{ reply: string; iterations: number; toolCallsUsed: string[] }> {
   const convo = normalizeMessages(inputMessages);
   let nativeToolsBroken = false;
   let iterations = 0;
+  const toolCallsUsed: string[] = [];
 
   while (iterations < MAX_ITERATIONS) {
     iterations += 1;
@@ -120,6 +121,7 @@ export async function runAgent(
       `[agent] it=${iterations} tools=[${result.toolCalls.map((t) => t.name).join(',')}] content="${(result.content || '').slice(0, 60)}"`
     );
 
+    for (const tc of result.toolCalls) toolCallsUsed.push(tc.name);
     if (result.toolCalls.length > 0) {
       convo.push({
         role: 'assistant',
@@ -172,12 +174,13 @@ export async function runAgent(
       continue;
     }
 
-    return { reply: result.content.trim(), iterations };
+    return { reply: result.content.trim(), iterations, toolCallsUsed };
   }
 
   return {
     reply:
       'Maaf, saya belum bisa menyelesaikan permintaan ini. Silakan coba ulang dengan pertanyaan yang lebih spesifik.',
     iterations,
+    toolCallsUsed,
   };
 }
