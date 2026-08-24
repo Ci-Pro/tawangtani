@@ -13,6 +13,7 @@ import { requireSupabaseUser } from '../middleware/supabaseUser';
 import { cached, cacheClear } from '../utils/cache';
 import { resolveCommodity } from '../services/commodityMatch';
 import { resolveProvince } from '../services/provinceMatch';
+import { runKemendagSync } from '../services/kemendagSync';
 
 export const marketRouter = Router();
 
@@ -294,6 +295,29 @@ marketRouter.get('/reports', async (req: Request, res: Response) => {
       })),
     });
   } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/**
+ * Cron harian (Vercel): tarik harga resmi SP2KP Kemendag -> Supabase.
+ * Guard: Bearer CRON_SECRET (dipicu Vercel) atau x-admin-token (manual).
+ */
+marketRouter.get('/cron/sync-kemendag', async (req: Request, res: Response) => {
+  try {
+    const viaCron = config.cronSecret && req.headers.authorization === `Bearer ${config.cronSecret}`;
+    const viaAdmin = config.adminToken && req.headers['x-admin-token'] === config.adminToken;
+    if (!viaCron && !viaAdmin) {
+      res.status(401).json({ error: 'Tidak diizinkan' });
+      return;
+    }
+    const tanggal = typeof req.query.tanggal === 'string' ? req.query.tanggal : undefined;
+    const result = await runKemendagSync(tanggal);
+    cacheClear();
+    console.log(`[cron] sinkron kemendag ${result.tanggal}: ${result.prices} harga, ${result.provinces} provinsi`);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('[cron] sinkron kemendag gagal:', (err as Error).message);
     res.status(500).json({ error: (err as Error).message });
   }
 });

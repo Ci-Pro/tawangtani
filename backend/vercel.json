@@ -1,5 +1,8 @@
 {
   "outputDirectory": "public",
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
-  "crons": [{ "path": "/api/push/cron/weather-push", "schedule": "0 1 * * *" }]
+  "crons": [
+    { "path": "/api/push/cron/weather-push", "schedule": "0 1 * * *" },
+    { "path": "/api/market/cron/sync-kemendag", "schedule": "35 7 * * *" }
+  ]
 }
