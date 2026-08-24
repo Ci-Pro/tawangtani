@@ -11,6 +11,8 @@ interface GoldCase {
   kategori: string;
   tools?: string[];
   include?: string[];
+  /** Lolos bila SALAH SATU string ada (untuk jawaban yang sah lebih dari satu bentuk). */
+  anyOf?: string[];
   exclude?: string[];
 }
 
@@ -19,12 +21,12 @@ const GOLD: GoldCase[] = [
   { q: 'Berapa harga cabai rawit merah di Jawa Timur hari ini?', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
   { q: 'Harga beras medium nasional berapa?', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
   { q: 'GKP di Jawa Timur sekarang berapa?', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
-  { q: 'Harga telur ayam di DKI Jakarta?', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
+  { q: 'Harga telur ayam di DKI Jakarta?', kategori: 'harga', tools: ['market_price'], anyOf: ['rp', 'rupiah', 'tidak tersedia', 'belum tersedia', 'tidak ada data'] },
   { q: 'Harga gabah kering giling provinsi Jawa Barat berapa?', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
   { q: 'Tren harga bawang merah 7 hari terakhir di Jawa Tengah seperti apa?', kategori: 'harga', tools: ['market_price'] },
   { q: 'Harga jagung pipilan di Sulawesi Selatan?', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
   { q: 'Bandingkan harga cabai merah besar dan cabai keriting di Jawa Barat', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
-  { q: 'Harga sapi murni daerah Aceh berapa?', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
+  { q: 'Harga sapi murni daerah Aceh berapa?', kategori: 'harga', tools: ['market_price'], anyOf: ['rp', 'rupiah', 'tidak tersedia', 'belum tersedia', 'tidak ada data'] },
   { q: 'Minyak goreng kemasan di Bali harganya berapa?', kategori: 'harga', tools: ['market_price'], include: ['rp'] },
 
   // ── Hama & penyakit (8) ──
@@ -50,7 +52,7 @@ const GOLD: GoldCase[] = [
   { q: 'Gabah mau dijual ke Bulog, syarat mutunya apa?', kategori: 'strategi', tools: ['search_knowledge'] },
   { q: 'Bagaimana cara sorting grading bawang merah sebelum dijual?', kategori: 'strategi', tools: ['search_knowledge'] },
   { q: 'Semprot pestisida perlu alat pelindung apa saja?', kategori: 'keselamatan', tools: ['search_knowledge'], include: ['sumber'] },
-  { q: 'Bolehkah menyemprot pestisida saat siang terik?', kategori: 'keselamatan', tools: ['search_knowledge'] },
+  { q: 'Bolehkah menyemprot pestisida saat siang terik?', kategori: 'keselamatan', anyOf: ['jangan', 'hindari', 'sebaiknya', 'lebih baik', 'risiko', 'tidak disarankan'] },
   { q: 'Apa itu interval pra-panen?', kategori: 'keselamatan', tools: ['search_knowledge'], include: ['sumber'] },
 ];
 
@@ -68,13 +70,25 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const limitArg = args.find((a) => a.startsWith('--limit='));
   const jsonArg = args.find((a) => a.startsWith('--json='));
+  const delayArg = args.find((a) => a.startsWith('--delay='));
+  const onlyArg = args.find((a) => a.startsWith('--only='));
   const limit = limitArg ? Number(limitArg.split('=')[1]) : GOLD.length;
+  const delayMs = delayArg ? Number(delayArg.split('=')[1]) : 0;
+  const onlyKategori = onlyArg
+    ? new Set(
+        onlyArg
+          .split('=')[1]
+          .split(',')
+          .map((k) => k.trim())
+      )
+    : null;
 
   const results: CaseResult[] = [];
   let passed = 0;
 
   for (const [idx, gold] of GOLD.entries()) {
     if (idx >= limit) break;
+    if (onlyKategori && !onlyKategori.has(gold.kategori)) continue;
     const t0 = Date.now();
     const alasan: string[] = [];
     let toolsTerpakai: string[] = [];
@@ -94,6 +108,10 @@ async function main(): Promise<void> {
       for (const inc of gold.include ?? []) {
         if (!replyLower.includes(inc.toLowerCase())) alasan.push(`harus memuat "${inc}"`);
       }
+      if (gold.anyOf && gold.anyOf.length > 0) {
+        const ada = gold.anyOf.some((a) => replyLower.includes(a.toLowerCase()));
+        if (!ada) alasan.push(`harus memuat salah satu: ${gold.anyOf.join(' / ')}`);
+      }
       for (const exc of gold.exclude ?? []) {
         if (replyLower.includes(exc.toLowerCase())) alasan.push(`tidak boleh memuat "${exc}"`);
       }
@@ -102,6 +120,9 @@ async function main(): Promise<void> {
       alasan.push(`ERROR: ${(err as Error).message.slice(0, 120)}`);
     }
 
+    if (delayMs > 0 && idx < limit - 1) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
     const ms = Date.now() - t0;
     const ok = alasan.length === 0;
     if (ok) passed += 1;

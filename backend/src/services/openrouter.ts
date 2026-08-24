@@ -7,6 +7,8 @@ export interface ORMessage {
     id: string;
     type: 'function';
     function: { name: string; arguments: string };
+    /** Gemini 3.x: thought_signature wajib di-echo pada giliran berikutnya. */
+    extra_content?: unknown;
   }>;
   tool_call_id?: string;
   name?: string;
@@ -25,7 +27,11 @@ interface ORChoice {
   message: {
     role: 'string';
     content: string | null;
-    tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+    tool_calls?: Array<{
+      id: string;
+      function: { name: string; arguments: string };
+      extra_content?: unknown;
+    }>;
   };
   finish_reason?: string;
 }
@@ -124,7 +130,12 @@ async function callOnce(
 
 export interface CompletionResult {
   content: string;
-  toolCalls: Array<{ id: string; name: string; arguments: string }>;
+  toolCalls: Array<{
+    id: string;
+    name: string;
+    arguments: string;
+    extraContent?: unknown;
+  }>;
 }
 
 export async function chatCompletion(
@@ -156,6 +167,7 @@ export async function chatCompletion(
           id: tc.id,
           name: tc.function.name,
           arguments: tc.function.arguments,
+          extraContent: tc.extra_content,
         })),
       };
     } catch (err) {
@@ -163,6 +175,10 @@ export async function chatCompletion(
         `[llm] gagal provider=${provider.name} model=${model}: ${(err as Error).message}`
       );
       lastError = err as Error;
+      // Jeda kecil saat rate-limit agar percobaan kandidat berikutnya tak langsung 429 lagi
+      if (/429|quota|rate/i.test((err as Error).message)) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
     }
   }
 

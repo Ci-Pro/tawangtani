@@ -1,6 +1,7 @@
 import { ToolContext, ToolResult } from '../types';
 import { searchKnowledge } from '../store/knowledge';
 import { listMarketPrices } from '../store/marketPrices';
+import { resolveCommodity, listCommoditySlugs } from '../services/commodityMatch';
 import { guidanceFor, toView } from '../services/marketData';
 import { getSeries } from '../services/marketHistory';
 
@@ -209,7 +210,7 @@ export async function executeTool(
       }
       return {
         summary:
-          'Artikel basis pengetahuan ditemukan (kutip sumbernya di jawaban):\n' +
+          'Artikel basis pengetahuan ditemukan. PENTING: baris TERAKHIR jawaban Anda WAJIB "Sumber: <sumber>" dari artikel yang dipakai.\n' +
           hits
             .map(
               (h) =>
@@ -227,13 +228,21 @@ export async function executeTool(
     }
 
     case 'market_price': {
-      const commodity =
+      const rawCommodity =
         typeof args.commodity === 'string' && args.commodity.trim()
           ? args.commodity.trim().toLowerCase().replace(/\s+/g, '_')
           : undefined;
+      const commodity = rawCommodity ? await resolveCommodity(rawCommodity) : undefined;
       const province =
         typeof args.province === 'string' && args.province.trim() ? args.province.trim() : undefined;
       const range = typeof args.range === 'string' ? (args.range as 'daily') : undefined;
+
+      if (rawCommodity && !commodity) {
+        const slugs = await listCommoditySlugs();
+        return {
+          summary: `Komoditas "${rawCommodity}" tidak dikenali. Slug valid: ${slugs.join(', ')}. Ulangi panggilan dengan salah satu slug itu.`,
+        };
+      }
 
       if (range && commodity) {
         const { buckets } = await getSeries(commodity, range, province ?? 'nasional');
@@ -256,9 +265,10 @@ export async function executeTool(
 
       const rows = await listMarketPrices(commodity, province);
       if (rows.length === 0) {
+        const slugs = await listCommoditySlugs();
         return {
           summary:
-            'Tidak ada data harga untuk komoditas tersebut. Komoditas yang tersedia: bawang_merah, bawang_putih, cabai_rawit_merah, cabai_merah_besar, tomat, kentang, wortel, kol, jagung_pipilan, beras_medium.',
+            `Tidak ada data harga untuk komoditas${commodity ? ` ${commodity}` : ''}${province ? ` di ${province}` : ''}. Komoditas yang tersedia: ${slugs.join(', ')}.`,
         };
       }
       const views = rows.map(toView);

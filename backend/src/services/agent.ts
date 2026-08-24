@@ -18,7 +18,7 @@ const SYSTEM_PROMPT = `Anda adalah Tani AI, agronomis digital berbahasa Indonesi
 - Pertanyaan praktis singkat → jawab ringkas langsung, jangan bertele-tele.
 
 ## ATURAN MUTLAK
-4. WAJIB akhiri jawaban yang memakai search_knowledge/product_search dengan baris "Sumber: <isi kolom sumber>" persis dari artikel/produk yang dipakai. Untuk harga, sebut sumber & tanggal pembaruan dan ingatkan harga nasional bisa beda dari harga lokal.
+4. WAJIB akhiri SETIAP jawaban yang memakai search_knowledge/product_search dengan baris terakhir PERSIS berformat "Sumber: <isi kolom sumber dari artikel/produk yang dipakai>". Jawaban tanpa baris Sumber dianggap gagal. Untuk harga, sebut sumber & tanggal pembaruan dan ingatkan harga nasional bisa beda dari harga lokal.
 5. Selalu ingatkan membaca label resmi sebelum aplikasi pestisida/pupuk, patuhi interval pra-panen.
 6. Bahasa Indonesia sederhana yang dipahami petani; angka dosis jelas; hindari istilah asing tanpa penjelasan.
 7. Prioritaskan pendekatan PHT (budaya teknis dulu, kimia terakhir bila perlu) dan keselamatan pengguna.`;
@@ -130,6 +130,7 @@ export async function runAgent(
           id: tc.id,
           type: 'function' as const,
           function: { name: tc.name, arguments: tc.arguments },
+          ...(tc.extraContent !== undefined ? { extra_content: tc.extraContent } : {}),
         })),
       });
       for (const tc of result.toolCalls) {
