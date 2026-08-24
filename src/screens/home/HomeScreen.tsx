@@ -35,6 +35,7 @@ const QUICK_ACTIONS: {
   { label: 'Produk', icon: 'cube-outline', route: 'ProductList' },
   { label: 'Aktivitas', icon: 'calendar-outline', route: 'Activities' },
   { label: 'Cuaca', icon: 'partly-sunny-outline', route: 'WeatherDetail' },
+  { label: 'Panduan', icon: 'help-circle-outline', route: 'Guide' },
 ];
 
 const HomeScreen: React.FC = () => {

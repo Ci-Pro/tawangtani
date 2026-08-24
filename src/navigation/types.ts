@@ -17,6 +17,7 @@ export type RootStackParamList = {
   PesticideCalculator: undefined;
   GridCalculator: undefined;
   UnitConverter: undefined;
+  Guide: undefined;
 };
 
 export type RootProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

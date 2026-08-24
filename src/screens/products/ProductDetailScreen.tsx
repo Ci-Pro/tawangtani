@@ -35,24 +35,37 @@ const ProductDetailScreen: React.FC<RootProps<'ProductDetail'>> = ({ route }) =>
           {product.name}
         </Text>
         <View style={styles.meta}>
-          <MetaRow label="Formulasi" value={product.formulation} />
-          <MetaRow label="Bahan Aktif" value={product.activeIngredient} />
+          <MetaRow label="Bentuk Produk" value={product.formulation} />
+          <MetaRow label="Kandungan Utama" value={product.activeIngredient} />
           <MetaRow label="Kategori" value={product.category === 'pupuk' ? 'Pupuk' : 'Pestisida'} />
         </View>
+        {product.category === 'pestisida' ? (
+          <Text
+            style={{
+              color: palette.textMuted,
+              fontSize: 11.5,
+              lineHeight: 17,
+              marginTop: 10,
+            }}
+          >
+            💡 Kandungan utama (bahan aktif) = zat yang benar-benar mengendalikan hama. Merek boleh
+            berbeda, tapi asal kandungannya sama, fungsinya sama.
+          </Text>
+        ) : null}
       </Card>
 
-      <SectionHeader title="Data Dosis" />
+      <SectionHeader title="Data Takaran" />
       {product.doses.map((d) => (
         <Card key={d.id}>
           <Text style={{ color: palette.text, fontWeight: '800', fontSize: 15 }}>
-            {d.crop} — {d.target}
+            Untuk {d.crop} — {d.target}
           </Text>
           <Text style={{ color: palette.primary, fontWeight: '900', fontSize: 22, marginTop: 6 }}>
             {d.dose} {d.unit}
             {d.waterVolumeLPerHa ? (
               <Text style={{ color: palette.textMuted, fontSize: 13, fontWeight: '600' }}>
                 {' '}
-                • air {d.waterVolumeLPerHa} L/ha
+                • air {d.waterVolumeLPerHa} liter per hektare
               </Text>
             ) : null}
           </Text>
@@ -71,10 +84,14 @@ const ProductDetailScreen: React.FC<RootProps<'ProductDetail'>> = ({ route }) =>
             <WarnLine text={`APD wajib: ${product.warnings.apd}`} />
           ) : null}
           {product.warnings.reEntryHours ? (
-            <WarnLine text={`Interval masuk kembali: ${product.warnings.reEntryHours} jam`} />
+            <WarnLine
+              text={`Jangan masuk lahan selama ${product.warnings.reEntryHours} jam setelah semprot/aplikasi`}
+            />
           ) : null}
           {product.warnings.preHarvestDays ? (
-            <WarnLine text={`Interval pra-panen: ${product.warnings.preHarvestDays} hari`} />
+            <WarnLine
+              text={`Panen minimal ${product.warnings.preHarvestDays} hari setelah aplikasi — agar sisa obat sudah hilang dan aman dimakan`}
+            />
           ) : null}
           {product.warnings.notes?.map((n, i) => (
             <WarnLine key={i} text={n} />

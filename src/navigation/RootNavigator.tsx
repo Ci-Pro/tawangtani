@@ -28,6 +28,7 @@ import ProfileScreen from '@/screens/profile/ProfileScreen';
 import LoginScreen from '@/screens/auth/LoginScreen';
 import SignupScreen from '@/screens/auth/SignupScreen';
 import MarketScreen from '@/screens/market/MarketScreen';
+import GuideScreen from '@/screens/guide/GuideScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator();
@@ -165,6 +166,11 @@ const RootNavigator: React.FC = () => {
               name="UnitConverter"
               component={UnitConverterScreen}
               options={{ title: 'Konversi Satuan' }}
+            />
+            <Stack.Screen
+              name="Guide"
+              component={GuideScreen}
+              options={{ title: 'Panduan Aplikasi' }}
             />
           </>
         )}

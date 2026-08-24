@@ -21,6 +21,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { syncHargaJikaPerlu, PROVINCE_LIST } from '@/services/kemtanSync';
 import { COMMODITY_LABELS as LABELS, MARKET_LEVELS as LEVELS, MARKET_LEVEL_NAME as LEVEL_NAME } from '@/constants/commodities';
+import { LEVEL_PLAIN, SUMBER_HARGA_JELASAN, COMMODITY_FRIENDLY } from '@/constants/bahasa';
 import { supabase } from '@/services/supabase';
 import { getExpoPushToken } from '@/services/pushRegister';
 import { fmtNum } from '@/utils/format';
@@ -84,6 +85,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const [selected, setSelected] = React.useState<string>('cabai_rawit_merah');
   const [province, setProvince] = React.useState<string>('nasional');
   const [provModal, setProvModal] = React.useState(false);
+  const [infoOpen, setInfoOpen] = React.useState(false);
   const [level, setLevel] = React.useState<number>(3);
   const [range, setRange] = React.useState<RangeKey>('daily');
   const [buckets, setBuckets] = React.useState<Bucket[] | null>(null);
@@ -427,12 +429,17 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                     fontWeight: '800',
                   }}
                 >
-                  {l.label}
+                  {LEVEL_PLAIN[l.key]?.title ?? l.label}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
+        {LEVEL_PLAIN[level] ? (
+          <Text style={{ color: palette.textMuted, fontSize: 11.5, marginTop: -2, marginBottom: 6, lineHeight: 16 }}>
+            💡 {LEVEL_PLAIN[level].jelasan}
+          </Text>
+        ) : null}
 
         {/* Pemilih komoditas */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
@@ -476,8 +483,8 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                   <Text style={{ fontSize: 13, color: palette.textMuted }}>/{current.unit}</Text>
                 </Text>
                 <Text style={{ color: palette.textMuted, fontSize: 12 }}>
-                  Referensi {LEVEL_NAME[level]} {PROV_LABEL(province)} •{' '}
-                  {LABELS[current.commodity] ?? current.commodity}
+                  {COMMODITY_FRIENDLY[current.commodity] ?? LABELS[current.commodity] ?? current.commodity}{' '}
+                  • {LEVEL_PLAIN[level]?.sub ?? `tingkat ${LEVEL_NAME[level]}`} • {PROV_LABEL(province)}
                 </Text>
               </View>
               <View
@@ -724,9 +731,40 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           </TouchableOpacity>
         ))}
 
-        <Text style={{ color: palette.textMuted, fontSize: 11, marginVertical: 16, textAlign: 'center' }}>
-          Sumber resmi Panel Harga ({PROV_LABEL(province)}); riwayat harian terekam otomatis. Harga bisa berbeda dari harga di pasar terdekat Anda.
-        </Text>
+        <TouchableOpacity
+          onPress={() => setInfoOpen(!infoOpen)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            marginVertical: 14,
+            alignSelf: 'center',
+          }}
+        >
+          <Ionicons
+            name={infoOpen ? 'chevron-up' : 'help-circle-outline'}
+            size={15}
+            color={palette.primary}
+          />
+          <Text style={{ color: palette.primary, fontSize: 12, fontWeight: '700' }}>
+            Dari mana data harga ini?
+          </Text>
+        </TouchableOpacity>
+        {infoOpen ? (
+          <View
+            style={{
+              backgroundColor: palette.surfaceAlt,
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 16,
+            }}
+          >
+            <Text style={{ color: palette.textMuted, fontSize: 11.5, lineHeight: 18 }}>
+              💡 {SUMBER_HARGA_JELASAN} Riwayat harga harian terekam otomatis sehingga tren bisa
+              dilihat kapan saja.
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       <Modal visible={provModal} animationType="slide" transparent>

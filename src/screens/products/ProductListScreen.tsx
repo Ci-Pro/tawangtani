@@ -39,7 +39,7 @@ const ProductListScreen: React.FC<{ route?: { params?: { category?: 'pupuk' | 'p
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Cari merek / bahan aktif / formulasi..."
+          placeholder="Cari produk... cth: abamektin"
           placeholderTextColor={palette.textMuted}
           style={{ flex: 1, color: palette.text, fontSize: 14.5 }}
         />

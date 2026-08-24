@@ -16,26 +16,26 @@ const ITEMS: {
   route: keyof RootStackParamList;
 }[] = [
   {
-    title: 'Kalkulator Pupuk',
-    desc: 'Kebutuhan pupuk dari luas lahan & dosis (kg/ha, g/m²)',
+    title: 'Hitung Pupuk',
+    desc: 'Tahu persis butuh berapa kilo pupuk untuk lahan Anda — tidak kurang, tidak terbuang sia-sia',
     icon: 'nutrition-outline',
     route: 'FertilizerCalculator',
   },
   {
-    title: 'Kalkulator Pestisida',
-    desc: 'Takaran per tangki dari dosis produk & volume tangki',
+    title: 'Hitung Takaran Obat',
+    desc: 'Takaran semprot per satu tangki sprayer — tinggal ikuti angkanya, aman dan pas',
     icon: 'flask-outline',
     route: 'PesticideCalculator',
   },
   {
-    title: 'Kalkulator Grid',
-    desc: 'Luas dari panjang × lebar, pembagian petak/grid',
+    title: 'Ukur Luas Lahan',
+    desc: 'Dari panjang × lebar jadi tahu luas sawah (m², are, hektare) & luas tiap petak',
     icon: 'grid-outline',
     route: 'GridCalculator',
   },
   {
-    title: 'Konversi Satuan',
-    desc: 'Luas, berat, dan volume pertanian',
+    title: 'Ubah Satuan',
+    desc: 'Ganti-ganti satuan dengan mudah: are ↔ m², ton ↔ kg, liter ↔ mililiter',
     icon: 'swap-horizontal-outline',
     route: 'UnitConverter',
   },
@@ -49,7 +49,8 @@ const CalculatorHomeScreen: React.FC = () => {
     <Screen>
       <Text style={[styles.title, { color: palette.text }]}>Kalkulator</Text>
       <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-        Hitung kebutuhan input secara akurat. Rumus selalu ditampilkan agar bisa diverifikasi.
+        Isi angka yang Anda tahu (luas lahan, takaran di label) — aplikasi menghitung sisanya.
+        Rumus selalu ditampilkan agar bisa diperiksa.
       </Text>
 
       {ITEMS.map((item) => (

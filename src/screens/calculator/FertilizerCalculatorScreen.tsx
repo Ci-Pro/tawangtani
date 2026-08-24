@@ -95,6 +95,10 @@ const FertilizerCalculatorScreen: React.FC = () => {
 
   return (
     <Screen>
+      <Text style={[styles.hint, { color: palette.textMuted }]}>
+        Masukkan luas lahan Anda dan dosis pupuk (dari rekomendasi penyuluh atau label). Hasilnya:
+        berapa kilo yang harus dibeli — dan setara berapa karung.
+      </Text>
       <Card>
         <SectionHeader title="Luas Lahan" />
         <Input
@@ -112,7 +116,7 @@ const FertilizerCalculatorScreen: React.FC = () => {
 
         <SectionHeader title="Dosis Pemupukan" />
         <Input
-          label="Dosis"
+          label={`Dosis (kg per ${areaUnit === 'ha' ? 'hektare' : AREA_LABEL[areaUnit]})`}
           placeholder="cth: 200"
           keyboardType="decimal-pad"
           value={dose}
@@ -149,13 +153,16 @@ const FertilizerCalculatorScreen: React.FC = () => {
       {result ? (
         <>
           <ResultCard
-            label="Total Kebutuhan"
+            label="Total Kebutuhan Pupuk"
             value={fmtNum(result.totalKg)}
             unit="kg"
             sub={[
               `= ${fmtNum(result.totalG, 0)} g`,
+              ...(result.totalKg >= 5
+                ? [`≈ ${Math.ceil(result.totalKg / 25)} karung @25 kg — beli agak lebih untuk cadangan`]
+                : []),
               ...(result.perGridKg !== undefined && result.gridCount
-                ? [`Per petak (${result.gridCount}): ${fmtNum(result.perGridKg)} kg`]
+                ? [`Tiap petak (${result.gridCount} petak): ${fmtNum(result.perGridKg)} kg`]
                 : []),
             ]}
           />
@@ -168,8 +175,8 @@ const FertilizerCalculatorScreen: React.FC = () => {
       ) : null}
 
       <Text style={[styles.note, { color: palette.textMuted }]}>
-        Rumus dasar: kebutuhan produk = luas lahan (ha) × dosis produk (kg/ha). Sesuaikan dosis
-        dengan rekomendasi tanah/daerah Anda.
+        Cara baca: dosis 200 kg/ha artinya setiap hektare (10.000 m²) diberi pupuk 200 kg. Dosis
+        terbaik ikuti rekomendasi tanah/penyuluh di daerah Anda.
       </Text>
     </Screen>
   );
@@ -198,6 +205,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 14,
     marginTop: -6,
+  },
+  hint: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   note: {
     fontSize: 11.5,

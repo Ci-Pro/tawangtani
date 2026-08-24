@@ -74,6 +74,14 @@ const ProfileScreen: React.FC = () => {
           <Ionicons name="chevron-forward" size={16} color={palette.textMuted} />
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.settingRow} onPress={() => navigation.navigate('Guide')}>
+          <Ionicons name="help-circle-outline" size={20} color={palette.textMuted} />
+          <Text style={{ color: palette.text, fontWeight: '600', flex: 1, marginLeft: 10 }}>
+            Panduan & Kamus Istilah
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={palette.textMuted} />
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.settingRow} onPress={() => navigation.navigate('History')}>
           <Ionicons name="time-outline" size={20} color={palette.textMuted} />
           <Text style={{ color: palette.text, fontWeight: '600', flex: 1, marginLeft: 10 }}>

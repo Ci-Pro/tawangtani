@@ -128,6 +128,10 @@ const PesticideCalculatorScreen: React.FC = () => {
 
   return (
     <Screen>
+      <Text style={styles.hint}>
+        Pilih produk obat, lalu isi luas lahan. Aplikasi menghitung takaran yang dituang ke TIAP
+        TANGKI SPRAYER — tinggal ikuti angkanya saat menyemprot.
+      </Text>
       <Card>
         <SectionHeader title="Produk" />
         <TouchableOpacity
@@ -167,14 +171,14 @@ const PesticideCalculatorScreen: React.FC = () => {
           </Text>
         ) : null}
 
-        <SectionHeader title="Dosis & Tangki" />
+        <SectionHeader title="Takaran & Tangki" />
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Input label="Dosis" placeholder="cth: 2" keyboardType="decimal-pad" value={dose} onChangeText={setDose} />
+            <Input label="Takaran (sesuai chip di atas)" placeholder="cth: 2" keyboardType="decimal-pad" value={dose} onChangeText={setDose} />
           </View>
           <View style={{ flex: 1 }}>
             <Input
-              label="Volume Tangki (L)"
+              label="Isi 1 Tangki (liter)"
               placeholder="cth: 14"
               keyboardType="decimal-pad"
               value={tankVolume}
@@ -188,14 +192,14 @@ const PesticideCalculatorScreen: React.FC = () => {
           ))}
         </View>
 
-        <SectionHeader title="Luas & Volume Air" />
+        <SectionHeader title="Luas Lahan & Air" />
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
             <Input label="Luas Lahan" placeholder="cth: 1" keyboardType="decimal-pad" value={areaValue} onChangeText={setAreaValue} />
           </View>
           <View style={{ flex: 1 }}>
             <Input
-              label="Volume Air (L/ha)"
+              label="Air per Hektare (liter)"
               placeholder="cth: 600"
               keyboardType="decimal-pad"
               value={waterRate}
@@ -216,12 +220,12 @@ const PesticideCalculatorScreen: React.FC = () => {
       {result ? (
         <>
           <ResultCard
-            label={`Kebutuhan per Tangki (${result.tanksNeeded} tangki)`}
+            label={`Takaran per Tangki — butuh ${result.tanksNeeded} tangki`}
             value={fmtNum(result.productPerTankValue, 1)}
             unit={result.productPerTankUnit}
             sub={[
-              `Total produk: ${fmtNum(result.productTotalValue, 1)} ${result.productTotalUnit}`,
-              `Total air: ${fmtNum(result.totalWaterL, 0)} L`,
+              `Artinya: tuang ${fmtNum(result.productPerTankValue, 1)} ${result.productPerTankUnit} obat ke tiap tangki, lalu isi air sampai penuh`,
+              `Total seluruh lahan: ${fmtNum(result.productTotalValue, 1)} ${result.productTotalUnit} obat + ${fmtNum(result.totalWaterL, 0)} liter air`,
             ]}
           />
 
@@ -235,12 +239,13 @@ const PesticideCalculatorScreen: React.FC = () => {
               ) : null}
               {selected.warnings.reEntryHours ? (
                 <Text style={[styles.warnText, { color: palette.text }]}>
-                  • Interval masuk kembali: {selected.warnings.reEntryHours} jam
+                  • Jangan masuk lahan selama {selected.warnings.reEntryHours} jam setelah semprot
                 </Text>
               ) : null}
               {selected.warnings.preHarvestDays ? (
                 <Text style={[styles.warnText, { color: palette.text }]}>
-                  • Interval pra-panen: {selected.warnings.preHarvestDays} hari
+                  • Panen minimal {selected.warnings.preHarvestDays} hari setelah semprot — agar
+                  sisa obat sudah hilang dan aman dimakan
                 </Text>
               ) : null}
               {selected.warnings.notes?.map((n, i) => (
@@ -358,6 +363,12 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: -6,
     marginBottom: 12,
+  },
+  hint: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginBottom: 12,
+    marginHorizontal: 16,
   },
   warnText: {
     fontSize: 13,

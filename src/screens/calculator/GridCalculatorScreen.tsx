@@ -75,19 +75,24 @@ const GridCalculatorScreen: React.FC = () => {
 
   return (
     <Screen>
+      <Text style={[styles.hint, { color: palette.textMuted }]}>
+        Ukur lahan dengan cara berjalan atau dari peta: masukkan panjang dan lebar dalam meter.
+        Aplikasi menghitung luasnya dalam m², are, dan hektare — plus luas tiap petak bila lahan
+        dibagi-bagi.
+      </Text>
       <Card>
-        <SectionHeader title="Dimensi Lahan" />
+        <SectionHeader title="Ukuran Lahan" />
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Input label="Panjang (m)" placeholder="cth: 100" keyboardType="decimal-pad" value={lengthM} onChangeText={setLengthM} />
+            <Input label="Panjang (meter)" placeholder="cth: 100" keyboardType="decimal-pad" value={lengthM} onChangeText={setLengthM} />
           </View>
           <View style={{ flex: 1 }}>
-            <Input label="Lebar (m)" placeholder="cth: 50" keyboardType="decimal-pad" value={widthM} onChangeText={setWidthM} />
+            <Input label="Lebar (meter)" placeholder="cth: 50" keyboardType="decimal-pad" value={widthM} onChangeText={setWidthM} />
           </View>
         </View>
         <Input
-          label="Jumlah Petak / Grid (opsional)"
-          placeholder="cth: 8 — untuk luas per petak"
+          label="Dibagi jadi berapa petak? (kosongkan jika tidak dibagi)"
+          placeholder="cth: 8 — untuk tahu luas tiap petak"
           keyboardType="number-pad"
           value={plotCount}
           onChangeText={setPlotCount}
@@ -99,14 +104,14 @@ const GridCalculatorScreen: React.FC = () => {
       {result ? (
         <>
           <ResultCard
-            label="Total Luas"
+            label="Total Luas Lahan"
             value={fmtNum(result.areaM2, 1)}
             unit="m²"
             sub={[
-              `= ${fmtNum(result.areaAre)} are`,
+              `= ${fmtNum(result.areaAre)} are (1 are = 10 × 10 meter)`,
               `= ${fmtNum(result.areaHa, 4)} hektare`,
               ...(result.perPlotM2 !== undefined && result.plotCount
-                ? [`Per petak (${result.plotCount}): ${fmtNum(result.perPlotM2, 1)} m²`]
+                ? [`Tiap petak (${result.plotCount} petak): ${fmtNum(result.perPlotM2, 1)} m²`]
                 : []),
             ]}
           />
@@ -119,7 +124,8 @@ const GridCalculatorScreen: React.FC = () => {
       ) : null}
 
       <Text style={[styles.note, { color: palette.textMuted }]}>
-        Gunakan hasil luas ini di Kalkulator Pupuk untuk menghitung kebutuhan pupuk per petak.
+        💡 Petak = pembagian lahan Anda. Tahu luas per petak memudahkan hitung pupuk & obat di
+        Kalkulator Pupuk.
       </Text>
     </Screen>
   );
@@ -145,6 +151,11 @@ const styles = StyleSheet.create({
   formula: {
     fontSize: 13,
     lineHeight: 21,
+  },
+  hint: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   note: {
     fontSize: 11.5,

@@ -228,8 +228,9 @@ const PlantingsScreen: React.FC = () => {
             🌱 Tanamanku & Estimasi Untung
           </Text>
           <Text style={{ color: palette.textMuted, fontSize: 12.5, marginTop: 4 }}>
-            Pantau umur tanaman (HST), dapat pengingat otomatis, dan hitung untung-rugi pakai harga
-            produsen {province === 'nasional' ? 'nasional' : province} terkini.
+            Catat tanaman Anda di sini: aplikasi menghitung umurnya otomatis, mengingatkan saat
+            waktunya memupuk/menyemprot/panen, dan memperkirakan untung-rugi pakai harga pasar
+            terkini.
           </Text>
         </Card>
 
@@ -247,7 +248,7 @@ const PlantingsScreen: React.FC = () => {
           <EmptyState
             icon="🌾"
             title="Belum ada tanaman"
-            subtitle="Catat tanaman Anda untuk pantauan HST, pengingat pemupukan, dan estimasi keuntungan."
+            subtitle="Catat tanggal tanam & luas lahan — sisanya (umur, pengingat, estimasi untung) dihitung otomatis."
           />
         ) : (
           <>
@@ -266,7 +267,8 @@ const PlantingsScreen: React.FC = () => {
                         {p.name && p.name !== COMMODITY_LABELS[p.commodity] ? ` • ${p.name}` : ''}
                       </Text>
                       <Text style={{ color: palette.textMuted, fontSize: 11.5, marginTop: 2 }}>
-                        Tanam {p.planted_at} • {Number(p.area)} ha • HST {hst}/{p.harvest_days}
+                        Tanam {p.planted_at} • {Number(p.area)} ha • Umur {hst} hari (panen ±{' '}
+                        {Math.max(0, p.harvest_days - hst)} hari lagi)
                         {done ? ` • ${p.status === 'harvested' ? '✔ dipanen' : '✖ gagal'}` : ''}
                       </Text>
                     </View>
@@ -326,8 +328,8 @@ const PlantingsScreen: React.FC = () => {
         )}
 
         <Text style={{ color: palette.textMuted, fontSize: 11, marginVertical: 16, textAlign: 'center' }}>
-          Pengingat HST dikirim sebagai notifikasi pagi hari. Estimasi untung = produksi × harga
-          produsen − biaya; angka riil bisa berbeda.
+          Pengingat dikirim sebagai notifikasi pagi hari. Estimasi untung = perkiraan hasil panen ×
+          harga − biaya; angka riil bisa berbeda.
         </Text>
       </ScrollView>
 
@@ -427,7 +429,7 @@ const PlantingsScreen: React.FC = () => {
                   color={palette.primary}
                 />
                 <Text style={{ color: palette.text, fontSize: 12.5, marginLeft: 8 }}>
-                  Aktifkan pengingat HST (pupuk, semprot, siap panen)
+                  Ingatkan saya (waktunya pupuk, semprot, siap panen)
                 </Text>
               </TouchableOpacity>
               {!!status && <Text style={{ color: palette.primary, fontSize: 12.5, marginBottom: 8 }}>{status}</Text>}
