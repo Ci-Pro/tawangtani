@@ -154,3 +154,19 @@ export async function logAiQuery(entry: {
     // logging tidak boleh mengganggu jawaban
   }
 }
+
+/** Hitung pemakaian AI seorang pengguna sejak `sinceIso` (untuk kuota harian). */
+export async function countRecentAiQueries(userId: string, sinceIso: string): Promise<number> {
+  if (!config.supabase.url || !config.supabase.serviceRoleKey) return 0;
+  try {
+    const res = await fetch(
+      `${config.supabase.url}/rest/v1/ai_query_log?select=id&user_id=eq.${encodeURIComponent(userId)}&created_at=gte.${encodeURIComponent(sinceIso)}`,
+      { headers: headers(), signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return 0;
+    const rows = (await res.json()) as unknown[];
+    return rows.length;
+  } catch {
+    return 0;
+  }
+}

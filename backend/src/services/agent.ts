@@ -44,6 +44,78 @@ function tryParseLoose(text: string): { name?: string; parameters?: Record<strin
   return null;
 }
 
+const KNOWN_TOOLS = TOOL_SCHEMAS.map((t) => t.function.name);
+
+const TOOL_ALIASES: Record<string, string> = {
+  weather: 'get_weather',
+  cuaca: 'get_weather',
+  get_cuaca: 'get_weather',
+  harga: 'market_price',
+  price: 'market_price',
+  market_prices: 'market_price',
+  products: 'product_search',
+  produk: 'product_search',
+  knowledge: 'search_knowledge',
+  kb: 'search_knowledge',
+};
+
+/** Koreksi nama tool yang sedikit salah dari model lemah (alias / jarak edit ≤ 2 / prefiks). */
+export function resolveToolName(name?: string): string {
+  if (!name) return '';
+  const norm = name.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  if (KNOWN_TOOLS.includes(norm)) return norm;
+  if (TOOL_ALIASES[norm] && KNOWN_TOOLS.includes(TOOL_ALIASES[norm])) return TOOL_ALIASES[norm];
+  let best = ''; let bestD = Infinity;
+  for (const k of KNOWN_TOOLS) {
+    const d = levenshtein(norm, k);
+    if (d < bestD) { bestD = d; best = k; }
+  }
+  return bestD <= 2 ? best : name;
+}
+
+function levenshtein(a: string, b: string): number {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return dp[a.length][b.length];
+}
+
+/**
+ * Parse argumen tool dengan toleransi kesalahan umum model kecil:
+ * kutip tunggal, koma menggantung, True/False/None gaya Python.
+ */
+export function parseToolArgs(raw?: string): Record<string, unknown> {
+  const s = (raw ?? '').trim() || '{}';
+  try {
+    return JSON.parse(s) as Record<string, unknown>;
+  } catch {
+    /* lanjut perbaikan */
+  }
+  const repaired = s
+    .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+    .replace(/,\s*([}\]])/g, '$1')
+    .replace(/([{,]\s*)'([^']+)'\s*:/g, '$1"$2":')
+    .replace(/:\s*'([^']*)'/g, ': "$1"')
+    .replace(/:\s*True\b/g, ': true')
+    .replace(/:\s*False\b/g, ': false')
+    .replace(/:\s*None\b/g, ': null');
+  try {
+    return JSON.parse(repaired) as Record<string, unknown>;
+  } catch {
+    /* coba pemindai kurung kurawal */
+  }
+  const loose = tryParseLoose(repaired);
+  if (loose && typeof loose.arguments === 'object' && loose.arguments !== null) {
+    return loose.arguments as Record<string, unknown>;
+  }
+  if (loose && typeof loose.parameters === 'object' && loose.parameters !== null) {
+    return loose.parameters as Record<string, unknown>;
+  }
+  return {};
+}
+
 function parseDirective(text: string): ToolCallOut | null {
   if (!text) return null;
   const m = text.match(/\{\s*"tool"\s*:\s*"[^"]+"[\s\S]*?\}/);
@@ -121,7 +193,11 @@ export async function runAgent(
       `[agent] it=${iterations} tools=[${result.toolCalls.map((t) => t.name).join(',')}] content="${(result.content || '').slice(0, 60)}"`
     );
 
-    for (const tc of result.toolCalls) toolCallsUsed.push(tc.name);
+    for (const tc of result.toolCalls) {
+      const fixed = resolveToolName(tc.name);
+      toolCallsUsed.push(fixed);
+      if (fixed !== tc.name) console.log(`[agent] nama tool dikoreksi: "${tc.name}" -> "${fixed}"`);
+    }
     if (result.toolCalls.length > 0) {
       convo.push({
         role: 'assistant',
@@ -134,17 +210,16 @@ export async function runAgent(
         })),
       });
       for (const tc of result.toolCalls) {
-        let args: Record<string, unknown> = {};
-        try {
-          args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>;
-        } catch {
-          args = {};
+        const args = parseToolArgs(tc.arguments);
+        const toolName = resolveToolName(tc.name);
+        if (toolName !== tc.name) {
+          console.log(`[agent] nama tool dikoreksi: "${tc.name}" -> "${toolName}"`);
         }
-        const toolResult = await executeTool(tc.name, args, ctx);
+        const toolResult = await executeTool(toolName, args, ctx);
         convo.push({
           role: 'tool',
           tool_call_id: tc.id,
-          name: tc.name,
+          name: toolName,
           content: JSON.stringify(toolResult),
         });
       }
@@ -153,11 +228,12 @@ export async function runAgent(
 
     const directive = parseDirective(result.content);
     if (directive) {
-      const toolResult = await executeTool(directive.name, directive.arguments, ctx);
+      const toolName = resolveToolName(directive.name);
+      const toolResult = await executeTool(toolName, directive.arguments, ctx);
       convo.push({ role: 'assistant', content: result.content });
       convo.push({
         role: 'user',
-        content: `[TOOL_RESULT ${directive.name}] ${JSON.stringify(toolResult)}`,
+        content: `[TOOL_RESULT ${toolName}] ${JSON.stringify(toolResult)}`,
       });
       continue;
     }

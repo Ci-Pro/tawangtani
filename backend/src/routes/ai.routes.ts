@@ -4,7 +4,7 @@ import { runAgent } from '../services/agent';
 import { executeTool } from '../tools/executors';
 import { loadCatalog } from '../store/catalog';
 import { visionCompletion } from '../services/openrouter';
-import { logAiQuery } from '../store/knowledge';
+import { logAiQuery, countRecentAiQueries } from '../store/knowledge';
 import { userFromHeader } from '../middleware/supabaseUser';
 import { ChatMessageIn, ToolContext } from '../types';
 import { aiLimiter } from '../middleware/rateLimit';
@@ -37,6 +37,22 @@ function extractTerms(text: string): { pest: string[]; disease: string[]; crop: 
   };
 }
 
+/** Kuota AI harian per pengguna (0 = pengguna anonim). */
+const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT ?? '100');
+
+async function quotaExceeded(req: Request): Promise<{ userId: string | null; exceeded: boolean }> {
+  const sbUser = await userFromHeader(req).catch(() => null);
+  if (!sbUser?.id) return { userId: null, exceeded: false };
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  let used = 0;
+  try {
+    used = await countRecentAiQueries(sbUser.id, since);
+  } catch {
+    return { userId: sbUser.id, exceeded: false };
+  }
+  return { userId: sbUser.id, exceeded: used >= AI_DAILY_LIMIT };
+}
+
 aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
   try {
     if (!hasApiKey()) {
@@ -51,13 +67,17 @@ aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
       res.status(400).json({ error: 'messages wajib berupa array tidak kosong' });
       return;
     }
+    const { userId, exceeded } = await quotaExceeded(req);
+    if (exceeded) {
+      res.status(429).json({ error: `Kuota AI harian tercapai (${AI_DAILY_LIMIT} pertanyaan/24 jam). Coba lagi besok.` });
+      return;
+    }
     const started = Date.now();
     const { reply, iterations } = await runAgent(messages, context ?? {});
     console.log(`[ai/chat] iter=${iterations} ms=${Date.now() - started}`);
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-    const sbUser = await userFromHeader(req).catch(() => null);
     logAiQuery({
-      userId: sbUser?.id ?? null,
+      userId,
       question: lastUser?.content ?? '(kosong)',
       iterations,
       model: process.env.OPENROUTER_MODEL ?? 'default',
@@ -82,11 +102,22 @@ aiRouter.post('/vision', aiLimiter, async (req: Request, res: Response) => {
       res.status(400).json({ error: 'imageBase64 wajib diisi' });
       return;
     }
+    const { userId, exceeded } = await quotaExceeded(req);
+    if (exceeded) {
+      res.status(429).json({ error: `Kuota AI harian tercapai (${AI_DAILY_LIMIT} analisis/24 jam). Coba lagi besok.` });
+      return;
+    }
     const prompt =
       'Anda adalah ahli patologi tanaman Indonesia. Analisis foto tanaman ini. ' +
       (context ? `Konteks: ${JSON.stringify(context)}. ` : '') +
       'Jawab ringkas dalam bahasa Indonesia dengan format: 1) Gejala yang terlihat, 2) Kemungkinan penyebab (hama/penyakit/gizi), 3) Tingkat keparahan, 4) Langkah penanganan awal yang aman. Sebutkan kelompok bahan aktif umum bila relevan, tetapi jangan mengarang nama merek produk; konsultasi PPL untuk kepastian.';
     const reply = await visionCompletion(imageBase64, prompt);
+    logAiQuery({
+      userId,
+      question: '[vision] ' + (context ?? '(tanpa konteks)').slice(0, 1900),
+      iterations: 1,
+      model: 'vision',
+    }).catch(() => undefined);
     // Rantai deterministik (tanpa kuota AI): diagnosis -> produk katalog + artikel KB
     let finalReply = reply;
     try {

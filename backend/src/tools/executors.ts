@@ -2,6 +2,32 @@ import { ToolContext, ToolResult } from '../types';
 import { searchKnowledge } from '../store/knowledge';
 import { listMarketPrices } from '../store/marketPrices';
 import { resolveCommodity, listCommoditySlugs } from '../services/commodityMatch';
+import { resolveProvince, listMarketProvinces } from '../services/provinceMatch';
+
+/** Terima ragam bentuk level harga: 1/2/3, 'producer'|'wholesale'|'retail', istilah Indonesia. */
+const LEVEL_MAP: Record<string, number> = {
+  produsen: 1,
+  producer: 1,
+  petani: 1,
+  grosir: 2,
+  wholesale: 2,
+  kios: 2,
+  penggrosok: 2,
+  eceran: 3,
+  retail: 3,
+  konsumen: 3,
+  pasar: 3,
+};
+
+function coerceLevel(v: unknown): number | undefined {
+  if (typeof v === 'number') return v >= 1 && v <= 3 ? Math.round(v) : undefined;
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    if (/^[123]$/.test(s)) return Number(s);
+    return LEVEL_MAP[s];
+  }
+  return undefined;
+}
 import { guidanceFor, toView } from '../services/marketData';
 import { getSeries } from '../services/marketHistory';
 
@@ -233,14 +259,22 @@ export async function executeTool(
           ? args.commodity.trim().toLowerCase().replace(/\s+/g, '_')
           : undefined;
       const commodity = rawCommodity ? await resolveCommodity(rawCommodity) : undefined;
-      const province =
+      const provinceRaw =
         typeof args.province === 'string' && args.province.trim() ? args.province.trim() : undefined;
+      const resolvedProvince = provinceRaw ? await resolveProvince(provinceRaw) : undefined;
+      const province = resolvedProvince ?? undefined;
       const range = typeof args.range === 'string' ? (args.range as 'daily') : undefined;
 
       if (rawCommodity && !commodity) {
         const slugs = await listCommoditySlugs();
         return {
           summary: `Komoditas "${rawCommodity}" tidak dikenali. Slug valid: ${slugs.join(', ')}. Ulangi panggilan dengan salah satu slug itu.`,
+        };
+      }
+      if (provinceRaw && resolvedProvince === null) {
+        const provs = await listMarketProvinces();
+        return {
+          summary: `Provinsi "${provinceRaw}" tidak dikenali. Nama provinsi valid: ${provs.join(', ')}. Ulangi panggilan dengan nama yang benar, atau tanpa parameter province untuk harga nasional.`,
         };
       }
 
@@ -263,7 +297,7 @@ export async function executeTool(
         };
       }
 
-      const rows = await listMarketPrices(commodity, province);
+      const rows = await listMarketPrices(commodity, province, coerceLevel(args.level));
       if (rows.length === 0) {
         const slugs = await listCommoditySlugs();
         return {

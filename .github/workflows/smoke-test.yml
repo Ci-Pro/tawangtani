@@ -1,0 +1,57 @@
+name: smoke-test
+
+# Uji cepat endpoint produksi pasca-deploy. Jalankan manual atau tiap push ke main.
+# Tidak butuh secret: anon key Supabase memang kunci publik klien.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/smoke-test.yml'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE: https://tawangtani-flame.vercel.app
+      SUPABASE_URL: https://bpiqgbjlwkdpnlgvxdrx.supabase.co
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwaXFnYmpsd2tkcG5sZ3Z4ZHJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMTUxOTIsImV4cCI6MjEwMjg5MTE5Mn0.BnbUUwfwyJnbrhVMV3LlCjoNwRbj4Y5sQcAkfxp3fOQ
+    steps:
+      - name: Katalog produk
+        run: |
+          R=$(curl -sS -m 30 "$BASE/api/products?q=beras&limit=3")
+          echo "$R" | head -c 300; echo
+          echo "$R" | grep -q '"id"' || (echo "FAIL: katalog kosong" && exit 1)
+
+      - name: Harga pasar
+        run: |
+          R=$(curl -sS -m 30 "$BASE/api/market/prices?commodity=beras_medium")
+          echo "$R" | head -c 300; echo
+          echo "$R" | grep -q '"price"' || (echo "FAIL: data harga kosong" && exit 1)
+
+      - name: Status AI
+        run: |
+          R=$(curl -sS -m 30 "$BASE/api/ai/status")
+          echo "$R"
+          echo "$R" | grep -q '"ok":true' || (echo "FAIL: status AI" && exit 1)
+
+      - name: Halaman admin
+        run: |
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' -m 30 "$BASE/admin")
+          echo "HTTP $CODE"
+          [ "$CODE" = "200" ] || (echo "FAIL: halaman admin" && exit 1)
+
+      - name: Chat AI end-to-end
+        run: |
+          EMAIL="smoke-$(date +%s)@test.id"
+          JWT=$(curl -sS -m 30 -X POST "$SUPABASE_URL/auth/v1/signup" \
+            -H "apikey: $ANON_KEY" -H "Content-Type: application/json" \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"Smoke12345!\"}" | jq -r '.access_token // empty')
+          [ -n "$JWT" ] || (echo "FAIL: signup smoke" && exit 1)
+          R=$(curl -sS -m 90 -X POST "$BASE/api/ai/chat" \
+            -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
+            -d '{"messages":[{"role":"user","content":"Berapa harga beras medium di Jawa Timur?"}]}')
+          echo "$R" | head -c 400; echo
+          echo "$R" | grep -qiE '(rp|rupiah)' || (echo "FAIL: jawaban AI tanpa harga" && exit 1)
