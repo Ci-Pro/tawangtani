@@ -71,10 +71,19 @@ const main = async () => {
   step('prices: bentuk data lengkap', prices.every((p) => p.commodity && typeof p.price === 'number' && [1, 2, 3].includes(p.level)));
 
   r = await req('/api/market/prices?province=jogja&level=kios');
-  step('prices: alias provinsi & level bebas', r.status === 200 && (r.json?.prices ?? []).length >= 1);
+  step(
+    'prices: alias provinsi & level bebas',
+    r.status === 200 && (r.json?.prices ?? []).length >= 1,
+    `${(r.json?.prices ?? []).length} baris`
+  );
 
-  r = await req('/api/market/prices?commodity=gkp&level=1');
-  step('prices: sinonim komoditas GKP', r.status === 200 && (r.json?.prices ?? []).length >= 1);
+  r = await req('/api/market/prices?commodity=gkp&province=jawa%20timur&level=1');
+  const gkps = r.json?.prices ?? [];
+  step(
+    'prices: sinonim komoditas GKP (L1 produsen)',
+    r.status === 200 && gkps.length >= 1 && gkps[0].commodity === 'gabah_kering_panen',
+    gkps.length ? `Rp${gkps[0].price}` : 'kosong'
+  );
 
   // 4. Riwayat / tren
   r = await req('/api/market/history?commodity=beras_medium&range=daily&province=nasional&level=3');
