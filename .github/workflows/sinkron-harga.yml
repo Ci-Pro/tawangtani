@@ -1,20 +1,16 @@
 name: sinkron-harga
 
+# CATATAN: WAF Kementan memblokir IP semua cloud (GitHub/Vercel/Supabase = 403).
+# Worker ini hanya bisa dipakai bila kelak ada sumber alternatif yang terbuka.
+# Untuk sekarang: sinkron andal = aplikasi mobile (kemtanSync tiap buka layar Harga,
+# throttle 20 jam/provinsi) + skrip lokal `node backend/scripts/sync-prices.mjs`.
 on:
-  schedule:
-    # 09:00 dan 21:00 WIB
-    - cron: '0 2 * * *'
-    - cron: '0 14 * * *'
   workflow_dispatch:
     inputs:
       provinsi:
         description: 'Nama provinsi tunggal (kosong = semua 38)'
         required: false
         default: ''
-  push:
-    paths:
-      - '.github/workflows/sinkron-harga.yml'
-      - 'backend/scripts/sync-prices.mjs'
 
 jobs:
   sync:
