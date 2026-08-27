@@ -88,7 +88,136 @@ const CROPS = [
   'padi', 'jagung', 'cabai', 'bawang merah', 'tomat', 'kentang', 'wortel', 'kol', 'kubis',
 ];
 
+/** Ekspansi query ringan: tambahkan sinonim istilah dagang/topik agar recall naik. */
+const EXPANSION: Record<string, string> = {
+  semprot: 'semprot pestisida',
+  obat: 'pestisida obat',
+  kering: 'kering kekeringan irigasi',
+  pupuk: 'pupuk pemupukan dosis',
+  panen: 'panen petik kematangan',
+  jual: 'jual pasar harga strategi_jual',
+  benih: 'benih bibit semai',
+  hama: 'hama penyakit serangan',
+  busuk: 'busuk penyakit jamur',
+  layu: 'layu penyakit wilt',
+  kuning: 'kuning daun defisiensi hara',
+};
+
+export function expandQuery(query: string): string {
+  let q = query.toLowerCase();
+  for (const [from, to] of Object.entries(EXPANSION)) {
+    if (q.includes(from)) q = `${q} ${to}`;
+  }
+  return q.replace(/\s+/g, ' ').trim();
+}
+
+// ---------- P3: RAG semantik (pgvector) ----------
+
+const EMBED_MODEL = 'gemini-embedding-001';
+let embedCache = new Map<string, { vec: number[]; at: number }>();
+const EMBED_TTL_MS = 30 * 60 * 1000;
+
+export async function embedText(text: string): Promise<number[] | null> {
+  const key = text.slice(0, 400);
+  const hit = embedCache.get(key);
+  if (hit && Date.now() - hit.at < EMBED_TTL_MS) return hit.vec;
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: `models/${EMBED_MODEL}`,
+          content: { parts: [{ text: key }] },
+          outputDimensionality: 768,
+        }),
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as { embedding?: { values?: number[] } };
+    const vec = json.embedding?.values;
+    if (!vec || !Array.isArray(vec)) return null;
+    embedCache.set(key, { vec, at: Date.now() });
+    if (embedCache.size > 128) {
+      const oldest = embedCache.keys().next().value;
+      if (oldest) embedCache.delete(oldest);
+    }
+    return vec;
+  } catch {
+    return null;
+  }
+}
+
+function embedVectorString(vec: number[]): string {
+  return `[${vec.map((v) => v.toFixed(6)).join(',')}]`;
+}
+
+/** RPC vektor hibrida (cosine + trigram) bila chunk sudah punya embedding. */
+async function searchKnowledgeVec(
+  query: string,
+  matchCount: number
+): Promise<KnowledgeHit[] | null> {
+  const vec = await embedText(query);
+  if (!vec) return null;
+  if (!config.supabase.url || !config.supabase.serviceRoleKey) return null;
+  try {
+    const res = await fetch(`${config.supabase.url}/rest/v1/rpc/search_knowledge_vec`, {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query, qvec: embedVectorString(vec), match_count: matchCount }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as KnowledgeHit[];
+    if (!Array.isArray(rows)) return null;
+    return rows.map((r) => ({ ...r, score: Math.round(Number(r.score) * 100) / 100 }));
+  } catch {
+    return null;
+  }
+}
+
+/** RPC full-text + trigram (fungsi PostgreSQL existing) sebagai lapis kedua. */
+async function searchKnowledgeRpc(query: string, matchCount: number): Promise<KnowledgeHit[] | null> {
+  if (!config.supabase.url || !config.supabase.serviceRoleKey) return null;
+  try {
+    const res = await fetch(`${config.supabase.url}/rest/v1/rpc/search_knowledge`, {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query, match_count: matchCount }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as KnowledgeHit[];
+    if (!Array.isArray(rows)) return null;
+    return rows.map((r) => ({ ...r, score: Math.round(Number(r.score) * 100) / 100 }));
+  } catch {
+    return null;
+  }
+}
+
 export async function searchKnowledge(query: string, matchCount = 4): Promise<KnowledgeHit[]> {
+  const result = typeof query === 'string' ? query : '';
+  const expanded = expandQuery(result);
+  const targets = expanded || result;
+
+  // 1) Paling baik: RAG semantik (embedding → vektor hibrida).
+  const vecHits = await searchKnowledgeVec(targets, matchCount);
+  if (vecHits && vecHits.length > 0) return vecHits;
+
+  // 2) RPC full-text + trigram (dijalankan di PostgreSQL, di-rank di server).
+  const rpcHits = await searchKnowledgeRpc(targets, matchCount);
+  if (rpcHits && rpcHits.length > 0) return rpcHits;
+
+  // 3) Terakhir: skoring lokal (fallback bila RPC tak tersedia).
+  return localScoring(targets, matchCount);
+}
+
+async function localScoring(query: string, matchCount: number): Promise<KnowledgeHit[]> {
   const rows = await loadChunks();
   if (rows.length === 0) return [];
   const lowerQ = query.toLowerCase();
@@ -136,6 +265,9 @@ export async function logAiQuery(entry: {
   question: string;
   iterations: number;
   model: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  latencyMs?: number;
 }): Promise<void> {
   if (!config.supabase.url || !config.supabase.serviceRoleKey) return;
   try {
@@ -147,6 +279,10 @@ export async function logAiQuery(entry: {
         question: entry.question.slice(0, 2000),
         iterations: entry.iterations,
         model: entry.model,
+        prompt_tokens: entry.promptTokens ?? 0,
+        completion_tokens: entry.completionTokens ?? 0,
+        model_used: entry.model,
+        latency_ms: entry.latencyMs ?? 0,
       }),
       signal: AbortSignal.timeout(5000),
     });

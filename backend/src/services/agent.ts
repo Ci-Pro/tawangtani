@@ -1,9 +1,15 @@
 import { ChatMessageIn, ToolCallOut, ToolContext } from '../types';
-import { chatCompletion, ORMessage } from './openrouter';
+import { chatCompletion, ORMessage, CompletionResult } from './openrouter';
 import { PROMPT_TOOL_DIRECTIVE, TOOL_SCHEMAS } from '../tools/schemas';
 import { executeTool } from '../tools/executors';
+import { budgetMessages, estimateTokens } from './tokenBudget';
 
 const MAX_ITERATIONS = 7;
+
+/** Maks karakter hasil tool yang dimasukkan ke konteks (perlindungan aliran token). */
+const MAX_TOOL_RESULT_CHARS = 3000;
+/** Anggaran input perkiraan token per putaran lengkap. */
+const MAX_INPUT_TOKENS = 24000;
 
 const SYSTEM_PROMPT = `Anda adalah Tani AI, agronomis digital berbahasa Indonesia di aplikasi TAWANGTANI yang membantu petani kecil memaksimalkan hasil panen.
 
@@ -156,11 +162,19 @@ function normalizeMessages(input: ChatMessageIn[]): ORMessage[] {
 export async function runAgent(
   inputMessages: ChatMessageIn[],
   ctx: ToolContext
-): Promise<{ reply: string; iterations: number; toolCallsUsed: string[] }> {
+): Promise<{
+  reply: string;
+  iterations: number;
+  toolCallsUsed: string[];
+  model: string;
+  usage: { promptTokens: number; completionTokens: number; totalTokens: number };
+}> {
   const convo = normalizeMessages(inputMessages);
   let nativeToolsBroken = false;
   let iterations = 0;
   const toolCallsUsed: string[] = [];
+  let model = '';
+  const usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   while (iterations < MAX_ITERATIONS) {
     iterations += 1;
@@ -171,10 +185,18 @@ export async function runAgent(
           'Iterasi terakhir: GUNAKAN data tool yang sudah didapat dan JAWAB pertanyaan pengguna sekarang. Dilarang memanggil tool lagi.',
       });
     }
-    let result;
+
+    // P1: jaga konteks agar tidak melampaui jendela kosong model fallback.
+    const budgeted = budgetMessages(convo, {
+      systemPrompt: SYSTEM_PROMPT,
+      maxInputTokens: MAX_INPUT_TOKENS,
+      maxMessageChars: 6000,
+    });
+
+    let result: CompletionResult;
     try {
       result = await chatCompletion(
-        convo,
+        budgeted,
         nativeToolsBroken ? undefined : TOOL_SCHEMAS,
         undefined,
         nativeToolsBroken ? 'auto' : iterations === 1 ? 'required' : 'auto'
@@ -188,9 +210,13 @@ export async function runAgent(
       }
       throw err;
     }
+    if (!model) model = result.model;
+    usage.promptTokens += result.usage.promptTokens;
+    usage.completionTokens += result.usage.completionTokens;
+    usage.totalTokens += result.usage.totalTokens;
 
     console.log(
-      `[agent] it=${iterations} tools=[${result.toolCalls.map((t) => t.name).join(',')}] content="${(result.content || '').slice(0, 60)}"`
+      `[agent] it=${iterations} tools=[${result.toolCalls.map((t) => t.name).join(',')}] tokens=${usage.promptTokens}+${usage.completionTokens} model=${result.model}`
     );
 
     for (const tc of result.toolCalls) {
@@ -215,12 +241,23 @@ export async function runAgent(
         if (toolName !== tc.name) {
           console.log(`[agent] nama tool dikoreksi: "${tc.name}" -> "${toolName}"`);
         }
-        const toolResult = await executeTool(toolName, args, ctx);
+        // P4: tool error dikembalikan ke model untuk percobaan ulang, bukan menggagalkan agen.
+        let toolText: string;
+        try {
+          const toolResult = await executeTool(toolName, args, ctx);
+          toolText = JSON.stringify(toolResult);
+          if (toolText.length > MAX_TOOL_RESULT_CHARS) toolText = toolText.slice(0, MAX_TOOL_RESULT_CHARS);
+        } catch (err) {
+          console.log(`[agent] tool error ${toolName}: ${(err as Error).message}`);
+          toolText = JSON.stringify({
+            summary: `[TOOL_ERROR] ${(err as Error).message}. Perbaiki argumen dan coba lagi.`,
+          });
+        }
         convo.push({
           role: 'tool',
           tool_call_id: tc.id,
           name: toolName,
-          content: JSON.stringify(toolResult),
+          content: toolText,
         });
       }
       continue;
@@ -229,11 +266,18 @@ export async function runAgent(
     const directive = parseDirective(result.content);
     if (directive) {
       const toolName = resolveToolName(directive.name);
-      const toolResult = await executeTool(toolName, directive.arguments, ctx);
+      let toolText: string;
+      try {
+        const toolResult = await executeTool(toolName, directive.arguments, ctx);
+        toolText = JSON.stringify(toolResult);
+        if (toolText.length > MAX_TOOL_RESULT_CHARS) toolText = toolText.slice(0, MAX_TOOL_RESULT_CHARS);
+      } catch (err) {
+        toolText = JSON.stringify({ summary: `[TOOL_ERROR] ${(err as Error).message} Perbaiki argumen dan coba lagi.` });
+      }
       convo.push({ role: 'assistant', content: result.content });
       convo.push({
         role: 'user',
-        content: `[TOOL_RESULT ${toolName}] ${JSON.stringify(toolResult)}`,
+        content: `[TOOL_RESULT ${toolName}] ${toolText}`,
       });
       continue;
     }
@@ -251,7 +295,7 @@ export async function runAgent(
       continue;
     }
 
-    return { reply: result.content.trim(), iterations, toolCallsUsed };
+    return { reply: result.content.trim(), iterations, toolCallsUsed, model: result.model, usage };
   }
 
   return {
@@ -259,5 +303,7 @@ export async function runAgent(
       'Maaf, saya belum bisa menyelesaikan permintaan ini. Silakan coba ulang dengan pertanyaan yang lebih spesifik.',
     iterations,
     toolCallsUsed,
+    model,
+    usage,
   };
 }

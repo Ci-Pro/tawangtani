@@ -154,6 +154,9 @@ const main = async () => {
     });
     const text = String(r.json?.answer ?? r.json?.reply ?? JSON.stringify(r.json));
     step('ai/chat: jawaban memuat angka harga', r.status === 200 && /(rp|rupiah|\d{4,})/i.test(text), text.slice(0, 60).replace(/\n/g, ' '));
+    step('ai/chat: menyertakan usage token', r.status === 200 && r.json?.usage?.promptTokens > 0 && typeof r.json?.model === 'string');
+    r = await req('/api/ai/vision', { method: 'POST', token: jwt, body: { imageBase64: 'b3V0LW9mLWZvcm1hdA==' } });
+    step('ai/vision: gambar invalid ditolak 400', r.status === 400);
   } else {
     console.log('  ⤼ ai/chat dilewati (SKIP_AI=1)');
   }

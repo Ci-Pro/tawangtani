@@ -5,6 +5,7 @@ export interface ChatMessageIn {
 }
 
 export interface ToolContext {
+  userId?: string;
   coords?: { lat: number; lon: number };
   locationName?: string;
   farmContext?: {

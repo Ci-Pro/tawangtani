@@ -3,6 +3,9 @@ import { searchKnowledge } from '../store/knowledge';
 import { listMarketPrices } from '../store/marketPrices';
 import { resolveCommodity, listCommoditySlugs } from '../services/commodityMatch';
 import { resolveProvince, listMarketProvinces } from '../services/provinceMatch';
+import { validateToolArgs } from './schemas';
+import { config } from '../config';
+import { insertFarmActivity } from '../store/farmActivities';
 
 /** Terima ragam bentuk level harga: 1/2/3, 'producer'|'wholesale'|'retail', istilah Indonesia. */
 const LEVEL_MAP: Record<string, number> = {
@@ -108,6 +111,14 @@ export async function executeTool(
   args: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResult> {
+  // P2: validasi skema argumen — galat dikembalikan agar model bisa mengulang.
+  const invalid = validateToolArgs(name, args);
+  if (invalid) {
+    return {
+      summary: `Permintaan tool tidak valid: ${invalid} Perbaiki dan panggil tool lagi.`,
+    };
+  }
+
   switch (name) {
     case 'get_weather': {
       if (!ctx.coords) {
@@ -248,6 +259,26 @@ export async function executeTool(
 
     case 'activity_log': {
       const activity = String(args.activity ?? 'lainnya');
+      // P4: catat ke backend (bukan sekadar teks statis) bila ada pengguna terautentikasi.
+      if (ctx.userId) {
+        try {
+          await insertFarmActivity({
+            user_id: ctx.userId,
+            activity,
+            product_name: args.productName ? String(args.productName) : undefined,
+            dose_text: args.doseText ? String(args.doseText) : undefined,
+            date: args.date ? String(args.date) : undefined,
+          });
+          return {
+            summary: `Aktivitas "${activity}" berhasil dicatat ke riwayat aktivitas Anda di server. Pengguna dapat melihat & melengkapinya di menu Aktivitas aplikasi.`,
+          };
+        } catch (e) {
+          console.log('[activity_log] simpan gagal:', (e as Error).message);
+          return {
+            summary: `Aktivitas "${activity}" belum bisa disimpan karena gangguan server. Coba lagi nanti atau catat lewat menu Aktivitas aplikasi.`,
+          };
+        }
+      }
       return {
         summary: `Aktivitas "${activity}" dicatat. Beri tahu pengguna untuk memeriksa dan melengkapi detail di menu Aktivitas aplikasi.`,
       };

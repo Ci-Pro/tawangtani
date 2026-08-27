@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { config, hasApiKey } from '../config';
+import { hasApiKey } from '../config';
 import { runAgent } from '../services/agent';
 import { executeTool } from '../tools/executors';
 import { loadCatalog } from '../store/catalog';
 import { visionCompletion } from '../services/openrouter';
 import { logAiQuery, countRecentAiQueries } from '../store/knowledge';
+import { parseDiagnosis } from '../services/structured';
 import { userFromHeader } from '../middleware/supabaseUser';
 import { ChatMessageIn, ToolContext } from '../types';
 import { aiLimiter } from '../middleware/rateLimit';
@@ -71,26 +72,59 @@ aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
       res.status(400).json({ error: 'messages maksimal 50 pesan, masing-masing maks 4.000 karakter' });
       return;
     }
+    const sbUser = await userFromHeader(req).catch(() => null);
     const { userId, exceeded } = await quotaExceeded(req);
     if (exceeded) {
       res.status(429).json({ error: `Kuota AI harian tercapai (${AI_DAILY_LIMIT} pertanyaan/24 jam). Coba lagi besok.` });
       return;
     }
     const started = Date.now();
-    const { reply, iterations } = await runAgent(messages, context ?? {});
-    console.log(`[ai/chat] iter=${iterations} ms=${Date.now() - started}`);
+    const ctx: ToolContext = { ...(context ?? {}), ...(sbUser?.id ? { userId: sbUser.id } : {}) };
+    const { reply, iterations, model, usage } = await runAgent(messages, ctx);
+    console.log(`[ai/chat] iter=${iterations} ms=${Date.now() - started} model=${model}`);
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     logAiQuery({
       userId,
       question: lastUser?.content ?? '(kosong)',
       iterations,
-      model: process.env.OPENROUTER_MODEL ?? 'default',
+      model,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      latencyMs: Date.now() - started,
     }).catch(() => undefined);
-    res.json({ reply });
+    res.json({ reply, model, usage });
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });
   }
 });
+
+/** Batas ukuran gambar base64 ~ 2,5 MB hasil dekode. */
+const MAX_IMAGE_BYTES = 2_500_000;
+
+function validateImage(base64: string): { bytes: number } | string {
+  if (typeof base64 !== 'string' || base64.length < 64) {
+    return 'imageBase64 tidak valid (terlalu pendek).';
+  }
+  if (/[^A-Za-z0-9+/=]/.test(base64)) {
+    return 'imageBase64 bukan data base64 valid.';
+  }
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+  const bytes = Math.floor((base64.length - padding) * (3 / 4));
+  if (bytes > MAX_IMAGE_BYTES) {
+    return `Ukuran gambar terlalu besar (${Math.round(bytes / 1_048_576 * 10) / 10} MB). Maksimal ${Math.round(MAX_IMAGE_BYTES / 1_048_576)} MB — gunakan foto lebih kecil.`;
+  }
+  return { bytes };
+}
+
+const DIAGNOSIS_SCHEMA_PROMPT = `
+Balas HANYA satu objek JSON valid tanpa teks lain, dengan skema:
+{
+  "gejala": ["string"], 
+  "penyebab": ["hama/penyakit/gizi dengan nama umum"], 
+  "keparahan": "rendah|sedang|tinggi|kritis", 
+  "penanganan": ["langkah aman bertahap"], 
+  "keyakinan": 0.5
+}`;
 
 aiRouter.post('/vision', aiLimiter, async (req: Request, res: Response) => {
   try {
@@ -102,8 +136,9 @@ aiRouter.post('/vision', aiLimiter, async (req: Request, res: Response) => {
       imageBase64?: string;
       context?: string;
     };
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      res.status(400).json({ error: 'imageBase64 wajib diisi' });
+    const imgCheck = validateImage(imageBase64 ?? '');
+    if (typeof imgCheck === 'string') {
+      res.status(400).json({ error: imgCheck });
       return;
     }
     const { userId, exceeded } = await quotaExceeded(req);
@@ -111,17 +146,49 @@ aiRouter.post('/vision', aiLimiter, async (req: Request, res: Response) => {
       res.status(429).json({ error: `Kuota AI harian tercapai (${AI_DAILY_LIMIT} analisis/24 jam). Coba lagi besok.` });
       return;
     }
+    const started = Date.now();
     const prompt =
       'Anda adalah ahli patologi tanaman Indonesia. Analisis foto tanaman ini. ' +
       (context ? `Konteks: ${JSON.stringify(context)}. ` : '') +
-      'Jawab ringkas dalam bahasa Indonesia dengan format: 1) Gejala yang terlihat, 2) Kemungkinan penyebab (hama/penyakit/gizi), 3) Tingkat keparahan, 4) Langkah penanganan awal yang aman. Sebutkan kelompok bahan aktif umum bila relevan, tetapi jangan mengarang nama merek produk; konsultasi PPL untuk kepastian.';
-    const reply = await visionCompletion(imageBase64, prompt);
+      DIAGNOSIS_SCHEMA_PROMPT;
+    const { text, model, usage } = await visionCompletion(imageBase64!, prompt, {
+      responseFormat: 'json_object',
+      maxTokens: 1100,
+      temperature: 0.15,
+    });
+
+    // P2: validasi skema structured.
+    const diag = parseDiagnosis(text);
+    let reply = text;
+    let structured: Record<string, unknown> | undefined;
+    if (diag.ok && diag.structured) {
+      structured = {
+        gejala: diag.structured.gejala,
+        penyebab: diag.structured.penyebab,
+        keparahan: diag.structured.keparahan,
+        keyakinan: diag.structured.keyakinan,
+      } as unknown as Record<string, unknown>;
+      reply = [
+        `Diagnosis: ${diag.structured.penyebab.join(', ')} (keyakinan ${Math.round(diag.structured.keyakinan * 100)}%).`,
+        `Keparahan: ${diag.structured.keparahan}.`,
+        `Gejala: ${diag.structured.gejala.join('; ')}.`,
+        `Penanganan awal:`,
+        ...diag.structured.penanganan.map((x) => `- ${x}`),
+      ].join('\n');
+    } else if (diag.error) {
+      console.log('[vision] skema tidak valid, fallback teks:', diag.error);
+    }
+
     logAiQuery({
       userId,
       question: '[vision] ' + (context ?? '(tanpa konteks)').slice(0, 1900),
       iterations: 1,
-      model: 'vision',
+      model,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      latencyMs: Date.now() - started,
     }).catch(() => undefined);
+
     // Rantai deterministik (tanpa kuota AI): diagnosis -> produk katalog + artikel KB
     let finalReply = reply;
     try {
@@ -158,7 +225,7 @@ aiRouter.post('/vision', aiLimiter, async (req: Request, res: Response) => {
           .replace(/^Produk ditemukan:\s*\n?/, '')
           .replace(/\nIngatkan petani.*$/, '');
         const kbLines = kbRes.summary.replace(
-          /^Artikel basis pengetahuan ditemukan \(kutip sumbernya di jawaban\):\s*\n?/,
+          /^Artikel basis pengetahuan ditemukan[.\s]*(PENTING:[^\n]*\n)?/,
           ''
         );
         if (!prodRes.summary.startsWith('Tidak ada') || !kbRes.summary.startsWith('Tidak ada')) {
@@ -176,7 +243,7 @@ aiRouter.post('/vision', aiLimiter, async (req: Request, res: Response) => {
     } catch (e) {
       console.log('[vision] rantai solusi gagal:', (e as Error).message);
     }
-    res.json({ reply: finalReply });
+    res.json({ reply: finalReply, model, structured });
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });
   }

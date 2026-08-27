@@ -142,3 +142,57 @@ Bila perlu menggunakan sebuah tool, balas HANYA satu baris JSON tanpa teks lain:
 {"tool": "nama_tool", "arguments": {...}}
 Setelah menerima [TOOL_RESULT ...], lanjutkan menjawab pengguna dengan bahasa Indonesia.
 JANGAN mengarang hasil tool. JANGAN mengarang dosis produk.`;
+
+interface ArgDef {
+  type?: 'string' | 'number' | 'boolean' | 'null';
+  enum?: unknown[];
+  description?: string;
+}
+
+interface ParamSchema {
+  type?: 'object';
+  required?: string[];
+  properties?: Record<string, ArgDef>;
+}
+
+function schemaFor(toolName: string): ParamSchema | null {
+  const t = TOOL_SCHEMAS.find((s) => s.function.name === toolName);
+  return (t?.function.parameters as unknown as ParamSchema | undefined) ?? null;
+}
+
+/**
+ * Validasi argumen tool terhadap skema JSON. Mengembalikan pesan galat berbahasa
+ * Indonesia bila tidak valid (untuk diumpankan kembali ke model), atau null bila valid.
+ */
+export function validateToolArgs(
+  toolName: string,
+  args: Record<string, unknown>
+): string | null {
+  const schema = schemaFor(toolName);
+  if (!schema) return null;
+
+  for (const req of schema.required ?? []) {
+    const v = args[req];
+    if (v === undefined || v === null || v === '') {
+      return `Argumen wajib "${req}" hilang untuk tool ${toolName}.`;
+    }
+  }
+
+  for (const [key, def] of Object.entries(schema.properties ?? {})) {
+    const v = args[key];
+    if (v === undefined || v === null) continue;
+    if (def.type === 'number') {
+      const n = Number(v);
+      if (!Number.isFinite(n)) {
+        return `Argumen "${key}" harus angka (menerima "${String(v)}").`;
+      }
+      args[key] = n;
+    } else if (def.type === 'string' && typeof v !== 'string') {
+      args[key] = String(v);
+    }
+    if (def.enum && !def.enum.includes(args[key])) {
+      return `Argumen "${key}" harus salah satu dari: ${def.enum.join(', ')} (menerima "${String(args[key])}").`;
+    }
+  }
+  return null;
+}

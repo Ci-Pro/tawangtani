@@ -39,6 +39,12 @@ interface ORChoice {
 interface ORResponse {
   choices?: ORChoice[];
   error?: { message?: string };
+  model?: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 }
 
 const REFERER = 'https://github.com/Ci-Pro/tawangtani';
@@ -100,7 +106,8 @@ async function callOnce(
   tools?: ORToolSchema[],
   toolChoice: 'auto' | 'required' = 'auto',
   maxTokens = 1400,
-  temperature = 0.3
+  temperature = 0.3,
+  responseFormat?: CompletionOptions['responseFormat']
 ): Promise<ORResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60000);
@@ -114,6 +121,7 @@ async function callOnce(
         ...(tools && tools.length ? { tools, tool_choice: toolChoice } : {}),
         temperature,
         max_tokens: maxTokens,
+        ...(responseFormat ? { response_format: { type: responseFormat } } : {}),
       }),
       signal: controller.signal,
     });
@@ -128,8 +136,22 @@ async function callOnce(
   }
 }
 
+export interface CompletionOptions {
+  /** Suhu kreativitas (default 0.3). Gunakan randah untuk fakta/diagnosis, sedang untuk ide. */
+  temperature?: number;
+  maxTokens?: number;
+  /** Minta output JSON terstruktur (bila didukung penyedia/model). */
+  responseFormat?: 'json_object';
+}
+
 export interface CompletionResult {
   content: string;
+  model: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
   toolCalls: Array<{
     id: string;
     name: string;
@@ -142,12 +164,15 @@ export async function chatCompletion(
   messages: ORMessage[],
   tools?: ORToolSchema[],
   preferredModel?: string,
-  toolChoice: 'auto' | 'required' = 'auto'
+  toolChoice: 'auto' | 'required' = 'auto',
+  opts: CompletionOptions = {}
 ): Promise<CompletionResult> {
   if (!hasLlmKey()) {
     throw new Error('GEMINI_API_KEY / OPENROUTER_API_KEY belum diatur di server');
   }
 
+  const maxTokens = opts.maxTokens ?? 1400;
+  const temperature = opts.temperature ?? 0.3;
   let lastError: Error | null = null;
 
   for (const { provider, model } of candidateCalls(preferredModel)) {
@@ -157,12 +182,21 @@ export async function chatCompletion(
         model,
         messages,
         tools && tools.length ? tools : undefined,
-        toolChoice
+        toolChoice,
+        maxTokens,
+        temperature,
+        opts.responseFormat
       );
       const choice = json.choices?.[0];
       if (!choice) throw new Error('Respons tanpa pilihan model');
       return {
         content: choice.message.content ?? '',
+        model: json.model ?? model,
+        usage: {
+          promptTokens: json.usage?.prompt_tokens ?? 0,
+          completionTokens: json.usage?.completion_tokens ?? 0,
+          totalTokens: json.usage?.total_tokens ?? 0,
+        },
         toolCalls: (choice.message.tool_calls ?? []).map((tc) => ({
           id: tc.id,
           name: tc.function.name,
@@ -188,8 +222,8 @@ export async function chatCompletion(
 export async function visionCompletion(
   imageBase64: string,
   prompt: string,
-  _preferredModel?: string
-): Promise<string> {
+  opts: { responseFormat?: 'json_object'; maxTokens?: number; temperature?: number } = {}
+): Promise<{ text: string; model: string; usage: CompletionResult['usage'] }> {
   if (!hasLlmKey()) {
     throw new Error('GEMINI_API_KEY / OPENROUTER_API_KEY belum diatur di server');
   }
@@ -206,10 +240,27 @@ export async function visionCompletion(
   let lastError: Error | null = null;
   for (const { provider, model } of candidateCalls(config.gemini.apiKey ? undefined : config.openrouter.visionModel)) {
     try {
-      const json = await callOnce(provider, model, messages, undefined, 'auto', 900, 0.2);
+      const json = await callOnce(
+        provider,
+        model,
+        messages,
+        undefined,
+        'auto',
+        opts.maxTokens ?? 1100,
+        opts.temperature ?? 0.2,
+        opts.responseFormat
+      );
       const text = json.choices?.[0]?.message?.content ?? '';
       if (!text) throw new Error('Respons kosong dari model');
-      return text;
+      return {
+        text,
+        model: json.model ?? model,
+        usage: {
+          promptTokens: json.usage?.prompt_tokens ?? 0,
+          completionTokens: json.usage?.completion_tokens ?? 0,
+          totalTokens: json.usage?.total_tokens ?? 0,
+        },
+      };
     } catch (err) {
       console.log(`[llm] vision gagal provider=${provider.name} model=${model}: ${(err as Error).message}`);
       lastError = err as Error;
