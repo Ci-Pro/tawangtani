@@ -22,11 +22,11 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useLocation } from '@/hooks/useWeather';
 import { syncHargaJikaPerlu, PROVINCE_LIST } from '@/services/kemtanSync';
+import { getExpoPushToken } from '@/services/pushRegister';
+import { supabase } from '@/services/supabase';
 import { COMMODITY_LABELS as LABELS, MARKET_LEVELS as LEVELS, MARKET_LEVEL_NAME as LEVEL_NAME } from '@/constants/commodities';
 import { LEVEL_PLAIN, SUMBER_HARGA_JELASAN, COMMODITY_FRIENDLY } from '@/constants/bahasa';
 import { commodityLabel } from '@/constants/bahasaDaerah';
-import { supabase } from '@/services/supabase';
-import { getExpoPushToken } from '@/services/pushRegister';
 import { fmtNum } from '@/utils/format';
 import { saveCache, loadCache, enqueue, processQueue, queueCount } from '@/services/offline';
 import { RootProps } from '@/navigation/types';
@@ -118,6 +118,11 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const [alertTarget, setAlertTarget] = React.useState('');
   const [alertStatus, setAlertStatus] = React.useState<string>('');
   const [alertSending, setAlertSending] = React.useState(false);
+
+  // Notifikasi pintar (perubahan harga >5%)
+  const [smartOn, setSmartOn] = React.useState(false);
+  const [smartLoading, setSmartLoading] = React.useState(false);
+  const [smartAlertStatus, setSmartAlertStatus] = React.useState<string>('');
 
   const loadPrices = React.useCallback(
     async (prov?: string, lvl?: number) => {
@@ -408,6 +413,69 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
     });
   }, [current, level, province, speaking, language]);
 
+  // Smart alert toggle — setelah `current` dideklarasikan
+  const toggleSmartAlert = React.useCallback(async () => {
+    if (!current) return;
+    setSmartLoading(true);
+    try {
+      const token = await getExpoPushToken();
+      const { data: sess } = await supabase.auth.getSession();
+      const jwt = sess.session?.access_token;
+      if (!jwt) {
+        setSmartAlertStatus('Masuk dulu untuk mengaktifkan notifikasi pintar.');
+        setSmartLoading(false);
+        return;
+      }
+      if (smartOn) {
+        const res = await fetch(`${backendUrl.replace(/\/$/, '')}/api/push/change-alerts`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+        const data = await res.json();
+        const my = (data.alerts ?? []).find(
+          (a: any) => a.commodity === selected && a.province === province && a.level === level
+        );
+        if (my) {
+          await fetch(`${backendUrl.replace(/\/$/, '')}/api/push/change-alerts?id=${my.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${jwt}` },
+          });
+        }
+        setSmartOn(false);
+      } else {
+        await fetch(`${backendUrl.replace(/\/$/, '')}/api/push/change-alerts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+          body: JSON.stringify({ expoToken: token, commodity: selected, province, level, threshold: 5 }),
+        });
+        setSmartOn(true);
+      }
+    } catch {}
+    setSmartLoading(false);
+  }, [current, smartOn, selected, province, level, backendUrl]);
+
+  // Load smart alert status on mount / commodity change
+  React.useEffect(() => {
+    if (!backendUrl || !current) return;
+    let alive = true;
+    (async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const jwt = sess.session?.access_token;
+        if (!jwt) return;
+        const res = await fetch(`${backendUrl.replace(/\/$/, '')}/api/push/change-alerts`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+        const data = await res.json();
+        if (!alive) return;
+        const my = (data.alerts ?? []).find(
+          (a: any) => a.commodity === selected && a.province === province && a.level === level
+        );
+        setSmartOn(!!my);
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, [backendUrl, selected, province, level]);
+
   return (
     <Screen>
       <ScrollView
@@ -654,6 +722,32 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           >
             <Ionicons name="notifications-outline" size={16} color={palette.textMuted} />
             <Text style={{ color: palette.text, fontWeight: '800', fontSize: 12.5 }}>Alarm Harga</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={toggleSmartAlert}
+            disabled={smartLoading}
+            style={[
+              styles.actionBtn,
+              {
+                backgroundColor: smartOn ? palette.primary + '18' : palette.surface,
+                borderColor: smartOn ? palette.primary : palette.border,
+              },
+            ]}
+          >
+            <Ionicons
+              name={smartOn ? 'notifications' : 'notifications-off-outline'}
+              size={16}
+              color={smartOn ? palette.primary : palette.textMuted}
+            />
+            <Text
+              style={{
+                color: smartOn ? palette.primary : palette.text,
+                fontWeight: '800',
+                fontSize: 12.5,
+              }}
+            >
+              {smartLoading ? '...' : smartOn ? 'Pintar: ON' : 'Pintar: OFF'}
+            </Text>
           </TouchableOpacity>
         </View>
 

@@ -4,6 +4,13 @@ import { listPushTokens, sendExpoPush, upsertPushToken } from '../store/pushToke
 import { listProvinces, listMarketPrices } from '../store/marketPrices';
 import { snapshotToday } from '../services/marketHistory';
 import {
+  upsertPriceChangeAlert,
+  listMyPriceChangeAlerts,
+  deactivatePriceChangeAlert,
+  listAllActivePriceChangeAlerts,
+  markPriceChangeAlertFired,
+} from '../store/priceChangeAlerts';
+import {
   deactivateAlert,
   listActiveAlerts,
   listMyAlerts,
@@ -121,6 +128,12 @@ pushRouter.get('/cron/weather-push', async (req: Request, res: Response) => {
     } catch (e) {
       console.log('[cron] alarm harga gagal:', (e as Error).message);
     }
+    let changeAlerts = 0;
+    try {
+      changeAlerts = await runPriceChangeJob();
+    } catch (e) {
+      console.log('[cron] notifikasi perubahan harga gagal:', (e as Error).message);
+    }
     let reminders = 0;
     try {
       reminders = await runPlantingReminders();
@@ -128,7 +141,7 @@ pushRouter.get('/cron/weather-push', async (req: Request, res: Response) => {
       console.log('[cron] pengingat tanam gagal:', (e as Error).message);
     }
     console.log(
-      `[cron] perangkat=${result.devices} terdaftar=${tokens.length} notif=${result.messages} snapshot_harga=${snapshot} alarm=${alerts} pengingat=${reminders}`
+      `[cron] perangkat=${result.devices} terdaftar=${tokens.length} notif=${result.messages} snapshot_harga=${snapshot} alarm=${alerts} perubahan_harga=${changeAlerts} pengingat=${reminders}`
     );
     res.json({ ok: true, ...result, snapshotHarga: snapshot, alertTerpicu: alerts, pengingat: reminders });
   } catch (err) {
@@ -222,6 +235,96 @@ pushRouter.delete('/alerts', pushLimiter, requireSupabaseUser, async (req: Reque
     res.status(500).json({ error: (err as Error).message });
   }
 });
+
+// ---- Price Change Alerts (smart notifications >5%) ----
+
+pushRouter.get('/change-alerts', requireSupabaseUser, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).sbUser;
+    const alerts = await listMyPriceChangeAlerts(user.id);
+    res.json({ alerts });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+pushRouter.post('/change-alerts', pushLimiter, requireSupabaseUser, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).sbUser;
+    const { expoToken, commodity, province, level, threshold } = req.body;
+    if (!expoToken || typeof expoToken !== 'string' || !expoToken.startsWith('ExpoPushToken')) {
+      res.status(400).json({ error: 'expoToken tidak valid' });
+      return;
+    }
+    if (!commodity || typeof commodity !== 'string' || !/^[a-z_]{3,40}$/.test(commodity)) {
+      res.status(400).json({ error: 'commodity tidak valid' });
+      return;
+    }
+    const lvl = Number(level) || 3;
+    const pct = Math.min(Math.max(Number(threshold) || 5, 1), 50);
+    const prov = typeof province === 'string' ? province.toLowerCase().slice(0, 40) : 'nasional';
+    await upsertPriceChangeAlert({
+      user_id: user.id,
+      expo_token: expoToken,
+      commodity,
+      province: prov,
+      level: lvl,
+      threshold: pct,
+      last_price: null,
+      active: true,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+pushRouter.delete('/change-alerts', requireSupabaseUser, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).sbUser;
+    const id = req.query.id as string;
+    if (!id) {
+      res.status(400).json({ error: 'id wajib' });
+      return;
+    }
+    await deactivatePriceChangeAlert(user.id, id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/** Evaluasi perubahan harga > threshold% dibanding last_price. */
+export async function runPriceChangeJob(): Promise<number> {
+  if (!hasSupabase()) return 0;
+  const alerts = await listAllActivePriceChangeAlerts();
+  if (alerts.length === 0) return 0;
+  const rows = await listMarketPrices();
+  const priceMap = new Map(
+    rows.map((r) => [`${r.commodity}|${r.province}|${r.level ?? 3}`, r.price])
+  );
+  const messages: { to: string; title: string; body: string; channelId: string }[] = [];
+  for (const a of alerts) {
+    const key = `${a.commodity}|${a.province}|${a.level ?? 3}`;
+    const price = priceMap.get(key);
+    if (price == null) continue;
+    const base = a.last_price ?? price;
+    if (base <= 0) continue;
+    const pctChange = Math.abs((price - base) / base) * 100;
+    if (pctChange < a.threshold) continue;
+    const dir = price > base ? 'naik' : 'turun';
+    messages.push({
+      to: a.expo_token,
+      title: `Harga ${a.commodity.replace(/_/g, ' ')} ${dir} ${pctChange.toFixed(1)}%`,
+      body: `Sekarang Rp${Math.round(price).toLocaleString('id-ID')}, sebelumnya Rp${Math.round(base).toLocaleString('id-ID')} (${a.province})`,
+      channelId: 'weather',
+    });
+    await markPriceChangeAlertFired(a.id!, price);
+    if (messages.length >= 90) break;
+  }
+  if (messages.length > 0) await sendExpoPush(messages);
+  return messages.length;
+}
 
 /** Evaluasi semua alarm aktif terhadap harga terkini; sekali picu lalu nonaktif. */
 export async function runPriceAlertJob(): Promise<number> {
