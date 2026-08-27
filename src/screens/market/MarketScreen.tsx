@@ -29,6 +29,7 @@ import { LEVEL_PLAIN, SUMBER_HARGA_JELASAN, COMMODITY_FRIENDLY } from '@/constan
 import { commodityLabel } from '@/constants/bahasaDaerah';
 import { fmtNum } from '@/utils/format';
 import { saveCache, loadCache, enqueue, processQueue, queueCount } from '@/services/offline';
+import { publishMarketWidget } from '@/services/widgetPublish';
 import { RootProps } from '@/navigation/types';
 
 interface PriceView {
@@ -140,6 +141,10 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         setOffline(false);
         setLoadError(false);
         saveCache(`market_${p}_${l}`, rows);
+        publishMarketWidget(
+          rows.map((r) => ({ name: commodityLabel(r.commodity, language), price: r.price })),
+          p
+        );
       } catch {
         const cached = await loadCache<PriceView[]>(`market_${p}_${l}`);
         if (cached && cached.data.length > 0) {
