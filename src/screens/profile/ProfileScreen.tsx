@@ -11,7 +11,9 @@ import { Screen } from '@/components/Screen';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore, type LangCode } from '@/store/useSettingsStore';
+import { useFarmStore } from '@/store/useFarmStore';
 import { useLocation } from '@/hooks/useWeather';
+import { supabase } from '@/services/supabase';
 import { RootStackParamList } from '@/navigation/types';
 
 const LANGUAGES: { code: LangCode; label: string; sub: string }[] = [
@@ -131,6 +133,45 @@ const ProfileScreen: React.FC = () => {
           <Ionicons name="time-outline" size={20} color={palette.textMuted} />
           <Text style={{ color: palette.text, fontWeight: '600', flex: 1, marginLeft: 10 }}>
             Riwayat Kalkulasi
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={palette.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={async () => {
+            try {
+              const { data: sess } = await supabase.auth.getSession();
+              const jwt = sess.session?.access_token;
+              if (!jwt) {
+                Alert.alert('Masuk Dulu', 'Login untuk sync lahan ke server.');
+                return;
+              }
+              const farms = useFarmStore.getState().farms;
+              if (farms.length === 0) {
+                Alert.alert('Kosong', 'Belum ada data lahan untuk di-sync.');
+                return;
+              }
+              const backendUrl = useSettingsStore.getState().backendUrl;
+              if (!backendUrl) {
+                Alert.alert('Backend belum diatur', 'Isi URL backend di atas.');
+                return;
+              }
+              const res = await fetch(`${backendUrl.replace(/\/$/, '')}/api/farms/seed`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+                body: JSON.stringify({ localFarms: farms }),
+              });
+              const data = await res.json();
+              Alert.alert('Tersinkron', `${data.seeded ?? 0} item lahan/crop berhasil di-sync ke server.`);
+            } catch (e) {
+              Alert.alert('Gagal', (e as Error).message);
+            }
+          }}
+        >
+          <Ionicons name="cloud-upload-outline" size={20} color={palette.textMuted} />
+          <Text style={{ color: palette.text, fontWeight: '600', flex: 1, marginLeft: 10 }}>
+            Sync Lahan ke Server
           </Text>
           <Ionicons name="chevron-forward" size={16} color={palette.textMuted} />
         </TouchableOpacity>

@@ -6,6 +6,7 @@ import { chatRouter } from './routes/chat.routes';
 import { pushRouter } from './routes/push.routes';
 import { marketRouter } from './routes/market.routes';
 import { plantingsRouter } from './routes/plantings.routes';
+import { farmsRouter } from './routes/farms.routes';
 import { adminRouter } from './routes/admin.routes';
 import { ADMIN_HTML } from './routes/adminPage';
 import { errorHandler } from './middleware/errorHandler';
@@ -30,6 +31,7 @@ export function createApp(): express.Express {
   app.use('/api/push', pushRouter);
   app.use('/api/market', marketRouter);
   app.use('/api/plantings', plantingsRouter);
+  app.use('/api/farms', farmsRouter);
   app.use('/api/admin', adminRouter);
   app.get('/admin', (_req, res) => {
     res.type('html').send(ADMIN_HTML);
