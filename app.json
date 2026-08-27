@@ -60,7 +60,8 @@
         {
           "photosPermission": "TAWANGTANI memerlukan akses foto untuk diagnosis tanaman (dikirim ke server AI Anda)."
         }
-      ]
+      ],
+      "expo-widget"
     ]
   }
 }
