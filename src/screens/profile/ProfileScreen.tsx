@@ -14,6 +14,7 @@ import { useSettingsStore, type LangCode } from '@/store/useSettingsStore';
 import { useFarmStore } from '@/store/useFarmStore';
 import { useLocation } from '@/hooks/useWeather';
 import { supabase } from '@/services/supabase';
+import { syncFarmsToServer } from '@/services/farmSync';
 import { RootStackParamList } from '@/navigation/types';
 
 const LANGUAGES: { code: LangCode; label: string; sub: string }[] = [
@@ -142,8 +143,7 @@ const ProfileScreen: React.FC = () => {
           onPress={async () => {
             try {
               const { data: sess } = await supabase.auth.getSession();
-              const jwt = sess.session?.access_token;
-              if (!jwt) {
+              if (!sess.session?.access_token) {
                 Alert.alert('Masuk Dulu', 'Login untuk sync lahan ke server.');
                 return;
               }
@@ -157,13 +157,8 @@ const ProfileScreen: React.FC = () => {
                 Alert.alert('Backend belum diatur', 'Isi URL backend di atas.');
                 return;
               }
-              const res = await fetch(`${backendUrl.replace(/\/$/, '')}/api/farms/seed`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-                body: JSON.stringify({ localFarms: farms }),
-              });
-              const data = await res.json();
-              Alert.alert('Tersinkron', `${data.seeded ?? 0} item lahan/crop berhasil di-sync ke server.`);
+              const seeded = await syncFarmsToServer();
+              Alert.alert('Tersinkron', `${seeded} item lahan/crop berhasil di-sync ke server.`);
             } catch (e) {
               Alert.alert('Gagal', (e as Error).message);
             }

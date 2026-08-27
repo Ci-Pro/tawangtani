@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User } from '@/types';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
+import { syncFarmsToServer } from '@/services/farmSync';
 
 interface AuthState {
   user: User | null;
@@ -43,8 +44,13 @@ export const useAuthStore = create<AuthState>()((set) => ({
       set({ user: data.session?.user ? mapUser(data.session.user) : null, ready: true });
       if (!listening) {
         listening = true;
-        supabase.auth.onAuthStateChange((_event, session) => {
+        supabase.auth.onAuthStateChange((event, session) => {
           set({ user: session?.user ? mapUser(session.user) : null });
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            syncFarmsToServer().catch(() => {
+              // sync diam-diam; user bisa sync manual lewat Profil
+            });
+          }
         });
       }
     } catch {

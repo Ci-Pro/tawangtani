@@ -58,8 +58,13 @@ export async function listFarms(userId: string): Promise<FarmRow[]> {
   return (await rest(`farms?select=*&user_id=eq.${userId}&order=created_at.desc`, 'GET')) as FarmRow[] ?? [];
 }
 
+function unwrap<T>(data: unknown): T {
+  if (Array.isArray(data)) return data[0] as T;
+  return data as T;
+}
+
 export async function insertFarm(row: FarmRow): Promise<FarmRow> {
-  return (await rest('farms', 'POST', row)) as FarmRow;
+  return unwrap<FarmRow>(await rest('farms', 'POST', row));
 }
 
 export async function updateFarm(userId: string, id: string, patch: Partial<FarmRow>): Promise<void> {
@@ -81,7 +86,7 @@ export async function listFarmCrops(userId: string, farmId?: string): Promise<Fa
 }
 
 export async function insertFarmCrop(row: FarmCropRow): Promise<FarmCropRow> {
-  return (await rest('farm_crops', 'POST', row)) as FarmCropRow;
+  return unwrap<FarmCropRow>(await rest('farm_crops', 'POST', row));
 }
 
 export async function updateFarmCrop(userId: string, id: string, patch: Partial<FarmCropRow>): Promise<void> {
