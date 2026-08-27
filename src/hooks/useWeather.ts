@@ -4,6 +4,7 @@ import * as Location from 'expo-location';
 import { WeatherData } from '@/types';
 import { fetchWeatherCached } from '@/services/weather/openMeteo';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { resolveProvince } from '@/utils/resolveProvince';
 
 export function useLocation() {
   const setLocation = useSettingsStore((s) => s.setLocation);
@@ -23,6 +24,7 @@ export function useLocation() {
         accuracy: Location.Accuracy.Balanced,
       });
       let name = '';
+      let prov: string | undefined;
       try {
         const places = await Location.reverseGeocodeAsync({
           latitude: pos.coords.latitude,
@@ -30,11 +32,12 @@ export function useLocation() {
         });
         if (places[0]) {
           name = [places[0].city ?? places[0].district, places[0].region].filter(Boolean).join(', ');
+          prov = resolveProvince(places[0].region) ?? undefined;
         }
       } catch {
         name = '';
       }
-      setLocation(name || 'Lokasi Anda', pos.coords.latitude, pos.coords.longitude);
+      setLocation(name || 'Lokasi Anda', pos.coords.latitude, pos.coords.longitude, prov);
     } catch {
       setStatus('denied');
     }

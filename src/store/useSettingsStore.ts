@@ -10,10 +10,11 @@ interface SettingsState {
   backendUrl: string;
   locationName: string;
   coords: { lat: number; lon: number } | null;
+  province: string | null;
   language: LangCode;
   toggleTheme: () => void;
   setBackendUrl: (url: string) => void;
-  setLocation: (name: string, lat: number, lon: number) => void;
+  setLocation: (name: string, lat: number, lon: number, province?: string) => void;
   setLanguage: (lang: LangCode) => void;
 }
 
@@ -24,11 +25,13 @@ export const useSettingsStore = create<SettingsState>()(
       backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL ?? '',
       locationName: '',
       coords: null,
+      province: null,
       language: 'id',
       toggleTheme: () =>
         set((s) => ({ themeMode: s.themeMode === 'light' ? 'dark' : 'light' })),
       setBackendUrl: (url) => set({ backendUrl: url }),
-      setLocation: (name, lat, lon) => set({ locationName: name, coords: { lat, lon } }),
+      setLocation: (name, lat, lon, province) =>
+        set({ locationName: name, coords: { lat, lon }, province: province ?? null }),
       setLanguage: (lang) => set({ language: lang }),
     }),
     { name: 'twt-settings', storage: createJSONStorage(() => AsyncStorage) }

@@ -20,6 +20,7 @@ import { EmptyState, Screen } from '@/components/Screen';
 import { PriceChart, ChartPoint } from '@/components/PriceChart';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useLocation } from '@/hooks/useWeather';
 import { syncHargaJikaPerlu, PROVINCE_LIST } from '@/services/kemtanSync';
 import { COMMODITY_LABELS as LABELS, MARKET_LEVELS as LEVELS, MARKET_LEVEL_NAME as LEVEL_NAME } from '@/constants/commodities';
 import { LEVEL_PLAIN, SUMBER_HARGA_JELASAN, COMMODITY_FRIENDLY } from '@/constants/bahasa';
@@ -84,6 +85,8 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const { palette } = useTheme();
   const backendUrl = useSettingsStore((s) => s.backendUrl);
   const language = useSettingsStore((s) => s.language);
+  const gpsProvince = useSettingsStore((s) => s.province);
+  const { request: requestLocation } = useLocation();
   const [prices, setPrices] = React.useState<PriceView[] | null>(null);
   const [selected, setSelected] = React.useState<string>('cabai_rawit_merah');
   const [province, setProvince] = React.useState<string>('nasional');
@@ -164,8 +167,8 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   React.useEffect(() => {
     Promise.all([AsyncStorage.getItem('market_province'), AsyncStorage.getItem('market_level')]).then(
       ([pv, lv]) => {
-        const p = pv ?? 'nasional';
-        if (pv) setProvince(p);
+        const p = pv ?? gpsProvince ?? 'nasional';
+        if (pv || gpsProvince) setProvince(p);
         let l = 3;
         if (lv === '1' || lv === '2' || lv === '3') {
           l = Number(lv);
@@ -177,7 +180,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
       }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [gpsProvince]);
 
   // Sinkronkan antrean offline saat layar dibuka / aplikasi kembali aktif
   React.useEffect(() => {
@@ -868,6 +871,19 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              <TouchableOpacity
+                onPress={async () => {
+                  setProvModal(false);
+                  await AsyncStorage.removeItem('market_province');
+                  await requestLocation();
+                }}
+                style={[styles.provItem, { backgroundColor: palette.primary + '12', marginBottom: 4 }]}
+              >
+                <Ionicons name="locate" size={16} color={palette.primary} />
+                <Text style={{ color: palette.primary, fontWeight: '700', marginLeft: 8 }}>
+                  Deteksi Otomatis
+                </Text>
+              </TouchableOpacity>
               {['nasional', ...PROVINCE_LIST].map((p) => (
                 <TouchableOpacity
                   key={p}
