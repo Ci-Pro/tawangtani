@@ -44,7 +44,25 @@ export const COMMODITY_LABELS: Record<string, string> = {
   ikan_tongkol: 'Tongkol',
   ikan_lele: 'Lele',
   ikan_nila: 'Nila',
+  ikan_teri: 'Teri',
   udang_windu: 'Udang',
+  pupuk_urea: 'Pupuk Urea',
+  pupuk_npk: 'Pupuk NPK',
+  pupuk_sp36: 'Pupuk SP-36',
+  pupuk_za: 'Pupuk ZA',
+  lpg_3kg: 'LPG 3 Kg',
+  lpg_12kg: 'LPG 12 Kg',
+  semen_portland: 'Semen',
+  mie_instan: 'Mie Inst',
+  garam_halus: 'Garam',
+  beras_sphp: 'Beras SPHP',
+  kacang_panjang: 'Kc Panjang',
+  kangkung: 'Kangkung',
+  sawi_hijau: 'Sawi',
+  jeruk_lokal: 'Jeruk',
+  pisang_lokal: 'Pisang',
+  susu_bubuk: 'Susu Bubuk',
+  susu_kemanis: 'Susu Kemanis',
 };
 
 /** Estimasi produksi default (kg/ha) untuk kalkulator untung-rugi. */
@@ -68,6 +86,9 @@ export const YIELD_DEFAULTS: Record<string, number> = {
   kol: 15000,
   kacang_tanah: 1800,
   kacang_hijau: 900,
+  kacang_panjang: 2500,
+  kangkung: 15000,
+  sawi_hijau: 8000,
 };
 
 /** Umur panen umum (hari) sebagai nilai awal form. */
@@ -91,6 +112,9 @@ export const HARVEST_DAYS_DEFAULTS: Record<string, number> = {
   kol: 90,
   kacang_tanah: 100,
   kacang_hijau: 65,
+  kacang_panjang: 60,
+  kangkung: 30,
+  sawi_hijau: 35,
 };
 
 /** Template pengingat HST standar (relatif terhadap tanggal tanam). */

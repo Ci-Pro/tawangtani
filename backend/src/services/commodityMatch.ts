@@ -52,6 +52,20 @@ const SYNONYMS: Record<string, string> = {
   goreng: 'minyak_goreng_kemasan',
   gula: 'gula_pasir',
   terigu: 'tepung_terigu',
+  pupuk: 'pupuk_urea',
+  npk: 'pupuk_npk',
+  sp36: 'pupuk_sp36',
+  lpg: 'lpg_3kg',
+  elpiji: 'lpg_3kg',
+  semen: 'semen_portland',
+  susu: 'susu_bubuk',
+  garam: 'garam_halus',
+  teri: 'ikan_teri',
+  kacang_panjang: 'kacang_panjang',
+  kangkung: 'kangkung',
+  sawi: 'sawi_hijau',
+  jeruk: 'jeruk_lokal',
+  pisang: 'pisang_lokal',
 };
 
 function headers(): Record<string, string> {
