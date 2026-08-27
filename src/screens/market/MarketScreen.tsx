@@ -23,6 +23,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { syncHargaJikaPerlu, PROVINCE_LIST } from '@/services/kemtanSync';
 import { COMMODITY_LABELS as LABELS, MARKET_LEVELS as LEVELS, MARKET_LEVEL_NAME as LEVEL_NAME } from '@/constants/commodities';
 import { LEVEL_PLAIN, SUMBER_HARGA_JELASAN, COMMODITY_FRIENDLY } from '@/constants/bahasa';
+import { commodityLabel } from '@/constants/bahasaDaerah';
 import { supabase } from '@/services/supabase';
 import { getExpoPushToken } from '@/services/pushRegister';
 import { fmtNum } from '@/utils/format';
@@ -82,6 +83,7 @@ type RangeKey = 'daily' | 'weekly' | 'monthly' | 'yearly';
 const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   const { palette } = useTheme();
   const backendUrl = useSettingsStore((s) => s.backendUrl);
+  const language = useSettingsStore((s) => s.language);
   const [prices, setPrices] = React.useState<PriceView[] | null>(null);
   const [selected, setSelected] = React.useState<string>('cabai_rawit_merah');
   const [province, setProvince] = React.useState<string>('nasional');
@@ -389,18 +391,19 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
       return;
     }
     if (!current) return;
-    const nama = COMMODITY_FRIENDLY[current.commodity] ?? LABELS[current.commodity] ?? current.commodity;
+    const nama = commodityLabel(current.commodity, language);
     const tingkat = LEVEL_PLAIN[level]?.title ?? `tingkat ${level}`;
+    const ttsLang = language === 'jv' ? 'id-ID' : language === 'su' ? 'id-ID' : language === 'ms' ? 'ms-MY' : 'id-ID';
     const teks = `Harga ${nama} di ${PROV_LABEL(province)} Rp${fmtNum(current.price)} per ${current.unit}, tingkat ${tingkat}.`;
     setSpeaking(true);
     Speech.speak(teks, {
-      language: 'id-ID',
+      language: ttsLang,
       rate: 0.9,
       onDone: () => setSpeaking(false),
       onStopped: () => setSpeaking(false),
       onError: () => setSpeaking(false),
     });
-  }, [current, level, province, speaking]);
+  }, [current, level, province, speaking, language]);
 
   return (
     <Screen>
@@ -527,7 +530,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                 ]}
               >
                 <Text style={{ color: active ? '#fff' : palette.text, fontSize: 12.5, fontWeight: '700' }}>
-                  {LABELS[p.commodity] ?? p.commodity}
+                  {commodityLabel(p.commodity, language)}
                 </Text>
               </TouchableOpacity>
             );
@@ -552,7 +555,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                   <Text style={{ fontSize: 13, color: palette.textMuted }}>/{current.unit}</Text>
                 </Text>
                 <Text style={{ color: palette.textMuted, fontSize: 12 }}>
-                  {COMMODITY_FRIENDLY[current.commodity] ?? LABELS[current.commodity] ?? current.commodity}{' '}
+                  {commodityLabel(current.commodity, language)}{' '}
                   • {LEVEL_PLAIN[level]?.sub ?? `tingkat ${LEVEL_NAME[level]}`} • {PROV_LABEL(province)}
                 </Text>
               </View>
@@ -759,7 +762,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                 <Card style={{ marginBottom: 8 }}>
                   <View style={styles.listRow}>
                     <Text style={{ color: palette.text, fontWeight: '800', flex: 1 }} numberOfLines={1}>
-                      {LABELS[a.commodity] ?? a.commodity}
+                      {commodityLabel(a.commodity, language)}
                     </Text>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={{ color: palette.text, fontWeight: '900' }}>
@@ -783,7 +786,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                 </Text>
                 {farmerRecent.slice(0, 5).map((r, i) => (
                   <Text key={i} style={{ color: palette.text, fontSize: 12, marginBottom: 3 }} numberOfLines={1}>
-                    • {LABELS[r.commodity] ?? r.commodity} Rp{fmtNum(r.price)}/{r.unit}
+                    • {commodityLabel(r.commodity, language)} Rp{fmtNum(r.price)}/{r.unit}
                     {r.village ? ` — ${r.village}` : ''} ({r.role})
                   </Text>
                 ))}
@@ -799,7 +802,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
             <Card style={{ marginBottom: 8 }}>
               <View style={styles.listRow}>
                 <Text style={{ color: palette.text, fontWeight: '800', flex: 1 }} numberOfLines={1}>
-                  {LABELS[p.commodity] ?? p.commodity}
+                  {commodityLabel(p.commodity, language)}
                 </Text>
                 <Text style={{ color: palette.text, fontWeight: '900' }}>Rp{fmtNum(p.price)}</Text>
                 <Text
@@ -914,7 +917,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                   ]}
                 >
                   <Text style={{ color: repCommodity === c ? '#fff' : palette.text, fontSize: 12, fontWeight: '700' }}>
-                    {LABELS[c] ?? c}
+                    {commodityLabel(c, language)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -970,7 +973,7 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           <View style={[styles.modalSheet, { backgroundColor: palette.surface }]}>
             <View style={styles.modalHead}>
               <Text style={{ color: palette.text, fontWeight: '900', fontSize: 16 }}>
-                Alarm Harga {LABELS[selected] ?? selected}
+                Alarm Harga {commodityLabel(selected, language)}
               </Text>
               <TouchableOpacity onPress={() => setAlertModal(false)}>
                 <Ionicons name="close" size={22} color={palette.textMuted} />

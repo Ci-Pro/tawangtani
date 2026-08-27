@@ -10,9 +10,16 @@ import { Input } from '@/components/Input';
 import { Screen } from '@/components/Screen';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useSettingsStore } from '@/store/useSettingsStore';
+import { useSettingsStore, type LangCode } from '@/store/useSettingsStore';
 import { useLocation } from '@/hooks/useWeather';
 import { RootStackParamList } from '@/navigation/types';
+
+const LANGUAGES: { code: LangCode; label: string; sub: string }[] = [
+  { code: 'id', label: 'Bahasa Indonesia', sub: 'Bawaan' },
+  { code: 'jv', label: 'Basa Jawa', sub: 'Jawa' },
+  { code: 'su', label: 'Basa Sunda', sub: 'Sunda' },
+  { code: 'ms', label: 'Bahasa Melayu', sub: 'Melayu' },
+];
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -22,9 +29,14 @@ const ProfileScreen: React.FC = () => {
   const backendUrl = useSettingsStore((s) => s.backendUrl);
   const setBackendUrl = useSettingsStore((s) => s.setBackendUrl);
   const locationName = useSettingsStore((s) => s.locationName);
+  const language = useSettingsStore((s) => s.language);
+  const setLanguage = useSettingsStore((s) => s.setLanguage);
   const { request } = useLocation();
 
   const [urlDraft, setUrlDraft] = useState(backendUrl);
+  const [langOpen, setLangOpen] = useState(false);
+
+  const currentLang = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
 
   const handleLogout = () => {
     Alert.alert('Keluar', 'Yakin ingin keluar?', [
@@ -73,6 +85,39 @@ const ProfileScreen: React.FC = () => {
           </Text>
           <Ionicons name="chevron-forward" size={16} color={palette.textMuted} />
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.settingRow} onPress={() => setLangOpen(!langOpen)}>
+          <Ionicons name="language-outline" size={20} color={palette.textMuted} />
+          <Text style={{ color: palette.text, fontWeight: '600', flex: 1, marginLeft: 10 }}>
+            Bahasa Komoditas
+          </Text>
+          <Text style={{ color: palette.textMuted, fontSize: 12.5 }}>{currentLang.label}</Text>
+          <Ionicons name={langOpen ? 'chevron-up' : 'chevron-down'} size={16} color={palette.textMuted} />
+        </TouchableOpacity>
+        {langOpen
+          ? LANGUAGES.map((l) => (
+              <TouchableOpacity
+                key={l.code}
+                style={[styles.settingRow, { paddingLeft: 44, paddingVertical: 9 }]}
+                onPress={() => {
+                  setLanguage(l.code);
+                  setLangOpen(false);
+                }}
+              >
+                <Ionicons
+                  name={language === l.code ? 'radio-button-on' : 'radio-button-off'}
+                  size={18}
+                  color={language === l.code ? palette.primary : palette.textMuted}
+                />
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                  <Text style={{ color: palette.text, fontWeight: '600', fontSize: 14 }}>{l.label}</Text>
+                  {l.sub !== 'Bawaan' ? (
+                    <Text style={{ color: palette.textMuted, fontSize: 11 }}>{l.sub}</Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+            ))
+          : null}
 
         <TouchableOpacity style={styles.settingRow} onPress={() => navigation.navigate('Guide')}>
           <Ionicons name="help-circle-outline" size={20} color={palette.textMuted} />
