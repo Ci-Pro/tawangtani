@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Speech from 'expo-speech';
 
 import { Card, SectionHeader } from '@/components/Card';
 import { EmptyState, Screen } from '@/components/Screen';
@@ -378,6 +379,29 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
       ? Math.round(((points[points.length - 1].value - points[0].value) / points[0].value) * 1000) / 10
       : null;
 
+  // TTS harga — setelah `current` dideklarasikan
+  const [speaking, setSpeaking] = React.useState(false);
+
+  const speakPrice = React.useCallback(() => {
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+      return;
+    }
+    if (!current) return;
+    const nama = COMMODITY_FRIENDLY[current.commodity] ?? LABELS[current.commodity] ?? current.commodity;
+    const tingkat = LEVEL_PLAIN[level]?.title ?? `tingkat ${level}`;
+    const teks = `Harga ${nama} di ${PROV_LABEL(province)} Rp${fmtNum(current.price)} per ${current.unit}, tingkat ${tingkat}.`;
+    setSpeaking(true);
+    Speech.speak(teks, {
+      language: 'id-ID',
+      rate: 0.9,
+      onDone: () => setSpeaking(false),
+      onStopped: () => setSpeaking(false),
+      onError: () => setSpeaking(false),
+    });
+  }, [current, level, province, speaking]);
+
   return (
     <Screen>
       <ScrollView
@@ -574,6 +598,25 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                   {current.changePct === null ? '—' : `${current.changePct > 0 ? '+' : ''}${current.changePct}%`}
                 </Text>
               </View>
+              <TouchableOpacity
+                onPress={speakPrice}
+                style={{
+                  marginLeft: 8,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: speaking ? palette.primary + '22' : palette.border + '55',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                accessibilityLabel={speaking ? 'Hentikan suara' : 'Dengarkan harga'}
+              >
+                <Ionicons
+                  name={speaking ? 'volume-high' : 'volume-medium'}
+                  size={18}
+                  color={speaking ? palette.primary : palette.textMuted}
+                />
+              </TouchableOpacity>
             </View>
             {current.hint ? (
               <Text style={{ color: palette.textMuted, fontSize: 12, marginTop: 10 }}>💡 {current.hint}</Text>
