@@ -67,6 +67,10 @@ aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
       res.status(400).json({ error: 'messages wajib berupa array tidak kosong' });
       return;
     }
+    if (messages.length > 50 || messages.some((m) => typeof m.content !== 'string' || m.content.length > 4000)) {
+      res.status(400).json({ error: 'messages maksimal 50 pesan, masing-masing maks 4.000 karakter' });
+      return;
+    }
     const { userId, exceeded } = await quotaExceeded(req);
     if (exceeded) {
       res.status(429).json({ error: `Kuota AI harian tercapai (${AI_DAILY_LIMIT} pertanyaan/24 jam). Coba lagi besok.` });

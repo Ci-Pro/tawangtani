@@ -2,12 +2,26 @@ import rateLimit from 'express-rate-limit';
 import type { Request, Response, NextFunction } from 'express';
 import { countRecentAiQueries } from '../store/knowledge';
 
+function userOrIpKey(req: Request): string {
+  return (req as any).sbUser?.id ?? req.ip ?? 'unknown';
+}
+
 export const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
+  keyGenerator: userOrIpKey,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Terlalu banyak permintaan AI. Coba lagi nanti.' },
+});
+
+export const pushLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  keyGenerator: userOrIpKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Terlalu banyak permintaan push. Coba lagi nanti.' },
 });
 
 export const authLimiter = rateLimit({

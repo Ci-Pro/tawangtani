@@ -18,10 +18,11 @@ import {
 } from '../store/plantings';
 import { config, hasSupabase } from '../config';
 import { optionalSupabaseUser, requireSupabaseUser } from '../middleware/supabaseUser';
+import { pushLimiter } from '../middleware/rateLimit';
 
 export const pushRouter = Router();
 
-pushRouter.post('/register', optionalSupabaseUser, async (req: Request, res: Response) => {
+pushRouter.post('/register', pushLimiter, optionalSupabaseUser, async (req: Request, res: Response) => {
   try {
     const { expoToken, lat, lon, locationName } = req.body as {
       expoToken?: string;
@@ -100,12 +101,9 @@ export async function runWeatherPushJob(): Promise<{
 
 pushRouter.get('/cron/weather-push', async (req: Request, res: Response) => {
   try {
-    if (config.cronSecret) {
-      const auth = req.headers.authorization;
-      if (auth !== `Bearer ${config.cronSecret}`) {
-        res.status(401).json({ error: 'Cron secret tidak valid' });
-        return;
-      }
+    if (!config.cronSecret || req.headers.authorization !== `Bearer ${config.cronSecret}`) {
+      res.status(401).json({ error: 'Cron secret tidak valid' });
+      return;
     }
     const tokens = await listPushTokens();
     const result = await runWeatherPushJob();
@@ -162,7 +160,7 @@ pushRouter.get('/alerts', requireSupabaseUser, async (req: Request, res: Respons
   }
 });
 
-pushRouter.post('/alerts', requireSupabaseUser, async (req: Request, res: Response) => {
+pushRouter.post('/alerts', pushLimiter, requireSupabaseUser, async (req: Request, res: Response) => {
   try {
     const user = (req as Request & { sbUser?: { id: string } }).sbUser;
     if (!user) {
@@ -206,7 +204,7 @@ pushRouter.post('/alerts', requireSupabaseUser, async (req: Request, res: Respon
   }
 });
 
-pushRouter.delete('/alerts', requireSupabaseUser, async (req: Request, res: Response) => {
+pushRouter.delete('/alerts', pushLimiter, requireSupabaseUser, async (req: Request, res: Response) => {
   try {
     const user = (req as Request & { sbUser?: { id: string } }).sbUser;
     if (!user) {

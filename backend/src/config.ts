@@ -1,7 +1,11 @@
 import 'dotenv/config';
 
-function env(key: string, fallback = ''): string {
-  return process.env[key] ?? fallback;
+function env(key: string, fallback?: string): string {
+  const val = process.env[key] ?? '';
+  if (!val && fallback === undefined) {
+    console.error(`[CONFIG] Missing required env: ${key}`);
+  }
+  return val || (fallback ?? '');
 }
 
 export const config = {
@@ -37,7 +41,7 @@ export const config = {
       .filter(Boolean),
   },
   adminToken: env('ADMIN_TOKEN', 'dev-admin-token'),
-  cronSecret: env('CRON_SECRET', ''),
+  cronSecret: env('CRON_SECRET'),
 };
 
 export function hasApiKey(): boolean {
