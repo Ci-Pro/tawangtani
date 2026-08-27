@@ -69,7 +69,7 @@ export async function fetchWeather(lat: number, lon: number): Promise<WeatherDat
     daily:
       'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max',
     timezone: 'auto',
-    forecast_days: '5',
+    forecast_days: '7',
   });
 
   const res = await fetch(`${BASE_URL}?${params.toString()}`);

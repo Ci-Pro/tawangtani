@@ -12,6 +12,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useLocation, useWeather } from '@/hooks/useWeather';
 import { describeWeatherCode, sprayCondition } from '@/services/weather/openMeteo';
+import { generateAgriTips, AgriTip } from '@/services/agriForecast';
 import { fmtNum } from '@/utils/format';
 import { describeCrop } from '@/features/farm/helpers';
 import { useActivityStore, activityLabel } from '@/store/useActivityStore';
@@ -56,6 +57,7 @@ const HomeScreen: React.FC = () => {
   );
   const wc = weather ? describeWeatherCode(weather.current.weatherCode) : null;
   const spray = weather ? sprayCondition(weather.current) : null;
+  const agriTips = weather ? generateAgriTips(weather) : [];
 
   const [alerts, setAlerts] = React.useState<WeatherAlert[]>([]);
   const backendUrl = useSettingsStore((s) => s.backendUrl);
@@ -181,6 +183,48 @@ const HomeScreen: React.FC = () => {
           </>
         )}
       </Card>
+
+      {agriTips.length > 0 && (
+        <Card style={{ backgroundColor: palette.surface }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Ionicons name="leaf" size={18} color={palette.primary} />
+            <Text style={{ color: palette.text, fontWeight: '800', fontSize: 14 }}>
+              Prakiraan Pertanian
+            </Text>
+          </View>
+          {agriTips.map((tip, i) => (
+            <View
+              key={i}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: 10,
+                marginBottom: i < agriTips.length - 1 ? 10 : 0,
+              }}
+            >
+              <Ionicons
+                name={tip.icon as never}
+                size={18}
+                color={
+                  tip.urgency === 'tinggi'
+                    ? palette.danger
+                    : tip.urgency === 'sedang'
+                      ? '#e6a817'
+                      : palette.primary
+                }
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: palette.text, fontWeight: '700', fontSize: 13 }}>
+                  {tip.title}
+                </Text>
+                <Text style={{ color: palette.textMuted, fontSize: 12, marginTop: 2 }}>
+                  {tip.detail}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </Card>
+      )}
 
       <SectionHeader title="Akses Cepat" />
       <View style={styles.quickGrid}>
