@@ -144,7 +144,12 @@ function api(path,opts){
   opts=opts||{};
   opts.headers=Object.assign({'x-admin-token':TOK,'Content-Type':'application/json'},opts.headers||{});
   return fetch('/api/admin'+path,opts).then(function(r){
-    if(r.status===403){toast('Token tidak valid',true);throw new Error('Token tidak valid')}
+    if(r.status===403){
+      toast('Token tidak valid — silakan masuk ulang',true);
+      localStorage.removeItem('twt_admin_token');
+      setTimeout(function(){location.reload()},1600);
+      throw new Error('Token tidak valid');
+    }
     return r.json();
   });
 }
@@ -161,8 +166,11 @@ function metaBadge(){
   api('/meta').then(function(m){
     var ok=m.envSet.geminiApi&&m.envSet.supabaseService&&m.envSet.adminTokenKhusus;
     var el=$('envbadge');el.className='badge '+(ok?'b-ok':'b-warn');
-    el.textContent=ok?('deploy '+m.sha):('periksa env · '+m.sha);
-  }).catch(function(){});
+    el.textContent=ok?('deploy '+m.sha):('env belum lengkap · '+m.sha);
+  }).catch(function(){
+    var el=$('envbadge');el.className='badge b-bad';el.textContent='tidak terhubung · cek token';
+    setTimeout(metaBadge,10000);
+  });
 }
 function init(){
   $('gate').classList.add('hidden');
