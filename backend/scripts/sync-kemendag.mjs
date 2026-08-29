@@ -67,6 +67,73 @@ const VARIANT_MAP = {
 
 const LITER_COMODITIES = new Set(['minyak_goreng_curah', 'minyak_goreng_kemasan']);
 
+/** Kuota masuk akal per komoditas (min, max); batas lebar, hanya nilai keliru dibuang.
+ *  Satuan: per kg, kecuali tercantum. Sinkronkan dengan backend priceSanity.ts. */
+const PRICE_LIMITS = {
+  gabah_kering_panen: [3000, 15000],
+  gabah_kering_giling: [4000, 18000],
+  beras_medium: [7000, 25000],
+  beras_premium: [9000, 30000],
+  beras_sphp: [6000, 22000],
+  jagung_pipilan: [3000, 15000],
+  kedelai_kering: [8000, 25000],
+  cabai_rawit_merah: [12000, 300000],
+  cabai_rawit_hijau: [10000, 200000],
+  cabai_merah_besar: [12000, 200000],
+  cabai_merah_keriting: [12000, 200000],
+  cabai_hijau_besar: [5000, 100000],
+  bawang_merah: [12000, 120000],
+  bawang_putih: [15000, 80000],
+  bawang_bombay: [12000, 60000],
+  bawang_daun: [5000, 30000],
+  tomat: [3000, 60000],
+  kentang: [6000, 40000],
+  wortel: [5000, 30000],
+  kol: [2000, 25000],
+  kacang_tanah: [10000, 50000],
+  kacang_hijau: [12000, 40000],
+  kacang_panjang: [4000, 30000],
+  kangkung: [2000, 30000],
+  sawi_hijau: [2000, 30000],
+  jeruk_lokal: [5000, 30000],
+  pisang_lokal: [3000, 25000],
+  gula_pasir: [12000, 25000],
+  minyak_goreng_curah: [10000, 30000, 'liter'],
+  minyak_goreng_kemasan: [12000, 50000, 'liter'],
+  tepung_terigu: [7000, 25000],
+  telur_ayam: [18000, 45000],
+  ayam_broiler: [20000, 60000],
+  sapi_murni: [90000, 250000],
+  ikan_kembung: [18000, 90000],
+  ikan_bandeng: [12000, 90000],
+  ikan_tongkol: [12000, 90000],
+  ikan_lele: [12000, 60000],
+  ikan_nila: [15000, 60000],
+  ikan_teri: [25000, 150000],
+  udang_windu: [45000, 300000],
+  pupuk_urea: [1500, 25000],
+  pupuk_npk: [1500, 25000],
+  pupuk_sp36: [1500, 25000],
+  pupuk_za: [1500, 20000],
+  lpg_3kg: [12000, 40000, 'tabung 3 kg'],
+  lpg_12kg: [160000, 500000, 'tabung 12 kg'],
+  semen_portland: [500, 5000],
+  mie_instan: [1000, 10000, 'bungkus'],
+  garam_halus: [3000, 30000],
+  susu_bubuk: [20000, 100000, 'kaleng'],
+  susu_kemanis: [6000, 30000, 'kaleng'],
+};
+
+function sane(commodity, price) {
+  const [min, max] = PRICE_LIMITS[commodity] ?? [500, 10_000_000];
+  if (!Number.isFinite(price) || price < min || price > max) return null;
+  return Math.round(price);
+}
+
+function unitFor(commodity) {
+  return PRICE_LIMITS[commodity]?.[2] ?? (LITER_COMODITIES.has(commodity) ? 'liter' : 'kg');
+}
+
 const KNOWN_PROVINCES = new Set([
   'aceh', 'sumatera utara', 'sumatera barat', 'riau', 'jambi', 'sumatera selatan',
   'bengkulu', 'lampung', 'kepulauan bangka belitung', 'kepulauan riau',
@@ -173,7 +240,7 @@ function transform(rawRows, tanggal, nowIso, prevByKey) {
       continue;
     }
     const price = Math.round(Number(r.harga));
-    if (!Number.isFinite(price) || price < 500 || price > 10_000_000) continue;
+    if (!Number.isFinite(price)) continue;
     const level = Number(r.level);
     if (![1, 2, 3].includes(level)) continue;
     const gkey = `${vName}|${prov}|${level}`;
@@ -184,11 +251,11 @@ function transform(rawRows, tanggal, nowIso, prevByKey) {
 
   const best = new Map();
   for (const g of grouped.values()) {
+    const avg = Math.round(g.prices.reduce((a, b) => a + b, 0) / g.prices.length);
+    const clean = sane(g.commodity, avg);
+    if (clean === null) continue;
     const key = `${g.commodity}|${g.prov}|${g.level}`;
-    const cand = {
-      commodity: g.commodity, prov: g.prov, level: g.level, prio: g.prio,
-      price: Math.round(g.prices.reduce((a, b) => a + b, 0) / g.prices.length),
-    };
+    const cand = { ...g, price: clean };
     const old = best.get(key);
     if (!old || cand.prio < old.prio) best.set(key, cand);
   }
@@ -204,7 +271,7 @@ function transform(rawRows, tanggal, nowIso, prevByKey) {
       level: c.level,
       price: c.price,
       prev_price: old && old !== c.price ? old : null,
-      unit: LITER_COMODITIES.has(c.commodity) ? 'liter' : 'kg',
+      unit: unitFor(c.commodity),
       source: 'sp2kp:kemendag-api',
       updated_at: nowIso,
     });

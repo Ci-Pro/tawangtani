@@ -42,6 +42,7 @@ interface PriceView {
   trend: 'naik' | 'turun' | 'stabil';
   unit: string;
   hint: string;
+  updatedAt?: string;
 }
 
 interface Bucket {
@@ -72,6 +73,37 @@ interface FarmerRecent {
 
 const PROV_LABEL = (p: string): string =>
   p === 'nasional' ? 'Nasional' : p.replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** Komoditas inti yang ditonjolkan di "Harga Hari Ini" (urutan prioritas). */
+const HERO_COMMODITIES = [
+  'beras_medium',
+  'gabah_kering_panen',
+  'jagung_pipilan',
+  'cabai_rawit_merah',
+  'cabai_merah_keriting',
+  'bawang_merah',
+  'bawang_putih',
+  'kentang',
+  'tomat',
+  'wortel',
+  'telur_ayam',
+  'ayam_broiler',
+  'sapi_murni',
+  'minyak_goreng_curah',
+  'gula_pasir',
+  'tepung_terigu',
+];
+
+const timeAgo = (iso?: string): string => {
+  if (!iso) return '—';
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.round(diff / 60000);
+  if (m < 1) return 'baru saja';
+  if (m < 60) return `${m} mnt lalu`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} jam lalu`;
+  return `${Math.round(h / 24)} hari lalu`;
+};
 
 const RANGES: { key: RangeKey; label: string; desc: string }[] = [
   { key: 'daily', label: 'Harian', desc: '30 hari' },
@@ -386,6 +418,17 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
   };
 
   const current = prices?.find((p) => p.commodity === selected);
+  const heroList = React.useMemo(() => {
+    if (!prices || prices.length === 0) return [];
+    return [...prices]
+      .sort((a, b) => {
+        const ia = HERO_COMMODITIES.indexOf(a.commodity);
+        const ib = HERO_COMMODITIES.indexOf(b.commodity);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      })
+      .slice(0, 10);
+  }, [prices]);
+  const freshAt = prices?.[0]?.updatedAt;
   const points: ChartPoint[] = (buckets ?? []).map((b) => ({ label: b.label, value: b.close }));
   const chartPositive =
     points.length >= 2 ? points[points.length - 1].value >= points[0].value : true;
@@ -587,6 +630,102 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
           <Text style={{ color: palette.textMuted, fontSize: 11.5, marginTop: -2, marginBottom: 6, lineHeight: 16 }}>
             💡 {LEVEL_PLAIN[level].jelasan}
           </Text>
+        ) : null}
+
+        {/* Harga Hari Ini */}
+        {heroList.length > 0 ? (
+          <>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ color: palette.text, fontWeight: '900', fontSize: 15 }}>
+                Harga Hari Ini
+              </Text>
+              <Text style={{ color: palette.textMuted, fontSize: 10.5 }}>
+                {freshAt ? `diperbarui ${timeAgo(freshAt)}` : ''}
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: 8,
+                marginBottom: 12,
+                justifyContent: 'space-between',
+              }}
+            >
+              {heroList.map((p) => {
+                const active = p.commodity === selected;
+                return (
+                  <TouchableOpacity
+                    key={p.commodity}
+                    onPress={() => setSelected(p.commodity)}
+                    style={[
+                      styles.heroCard,
+                      {
+                        backgroundColor: active ? palette.primary + '12' : palette.surface,
+                        borderColor: active ? palette.primary : palette.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={{ color: palette.textMuted, fontSize: 11, fontWeight: '700' }}
+                      numberOfLines={1}
+                    >
+                      {commodityLabel(p.commodity, language)}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 2 }}>
+                      <Text style={{ color: palette.text, fontWeight: '900', fontSize: 16 }}>
+                        Rp{fmtNum(p.price)}
+                      </Text>
+                      <Text style={{ color: palette.textMuted, fontSize: 10 }}>
+                        /{p.unit}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                      <Ionicons
+                        name={
+                          p.trend === 'naik'
+                            ? 'arrow-up'
+                            : p.trend === 'turun'
+                              ? 'arrow-down'
+                              : 'remove'
+                        }
+                        size={12}
+                        color={
+                          p.trend === 'naik'
+                            ? palette.success
+                            : p.trend === 'turun'
+                              ? palette.danger
+                              : palette.textMuted
+                        }
+                      />
+                      <Text
+                        style={{
+                          color:
+                            p.trend === 'naik'
+                              ? palette.success
+                              : p.trend === 'turun'
+                                ? palette.danger
+                                : palette.textMuted,
+                          fontSize: 11,
+                          fontWeight: '800',
+                          marginLeft: 3,
+                        }}
+                      >
+                        {p.changePct === null ? '—' : `${p.changePct > 0 ? '+' : ''}${p.changePct}%`}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
         ) : null}
 
         {/* Pemilih komoditas */}
@@ -906,19 +1045,57 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
                 <Text style={{ color: palette.text, fontWeight: '800', flex: 1 }} numberOfLines={1}>
                   {commodityLabel(p.commodity, language)}
                 </Text>
-                <Text style={{ color: palette.text, fontWeight: '900' }}>Rp{fmtNum(p.price)}</Text>
-                <Text
-                  style={{
-                    width: 62,
-                    textAlign: 'right',
-                    color:
-                      p.trend === 'naik' ? palette.success : p.trend === 'turun' ? palette.danger : palette.textMuted,
-                    fontSize: 12.5,
-                    fontWeight: '800',
-                  }}
+                <View style={{ alignItems: 'flex-end' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                    <Text style={{ color: palette.text, fontWeight: '900' }}>
+                      Rp{fmtNum(p.price)}
+                    </Text>
+                    {p.prevPrice != null && p.prevPrice !== p.price && (
+                      <Text
+                        style={{
+                          color: palette.textMuted,
+                          fontSize: 10.5,
+                          marginLeft: 5,
+                          textDecorationLine: 'line-through',
+                        }}
+                      >
+                        Rp{fmtNum(p.prevPrice)}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={{ color: palette.textMuted, fontSize: 10.5 }}>
+                    per {p.unit}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    {
+                      width: 66,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                      paddingVertical: 4,
+                    },
+                    {
+                      backgroundColor:
+                        p.trend === 'naik'
+                          ? palette.success + '1a'
+                          : p.trend === 'turun'
+                            ? palette.danger + '1a'
+                            : palette.border + '44',
+                    },
+                  ]}
                 >
-                  {p.changePct === null ? '' : `${p.changePct > 0 ? '+' : ''}${p.changePct}%`}
-                </Text>
+                  <Text
+                    style={{
+                      color:
+                        p.trend === 'naik' ? palette.success : p.trend === 'turun' ? palette.danger : palette.textMuted,
+                      fontSize: 11.5,
+                      fontWeight: '800',
+                    }}
+                  >
+                    {p.changePct === null ? '—' : `${p.changePct > 0 ? '+' : ''}${p.changePct}%`}
+                  </Text>
+                </View>
               </View>
             </Card>
           </TouchableOpacity>
@@ -1152,6 +1329,13 @@ const Stat: React.FC<{ label: string; value: string; palette: { text: string; te
 
 const styles = StyleSheet.create({
   chipRow: { marginBottom: 12 },
+  heroCard: {
+    width: '48%',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 7,

@@ -53,13 +53,23 @@ function headers(): Record<string, string> {
 
 export async function listMarketProvinces(): Promise<string[]> {
   if (cache.provinces.length > 0 && Date.now() - cache.at < TTL_MS) return cache.provinces;
+  const seen = new Set<string>();
   try {
-    const res = await fetch(`${config.supabase.url}/rest/v1/market_prices?select=province`, {
-      headers: headers(),
-    });
-    if (!res.ok) return cache.provinces;
-    const rows = (await res.json()) as Array<{ province: string }>;
-    const provinces = [...new Set(rows.map((r) => r.province))].filter((p) => p !== 'nasional').sort();
+    // Paginasi penuh: tabel >1.000 baris sehingga batas PostgREST
+    // memotong daftar provinsi kalau cuma satu panggilan.
+    for (let offset = 0; offset < 30_000; offset += 1000) {
+      const res = await fetch(
+        `${config.supabase.url}/rest/v1/market_prices?select=province&limit=1000&offset=${offset}`,
+        { headers: headers() }
+      );
+      if (!res.ok) return cache.provinces;
+      const rows = (await res.json()) as Array<{ province: string }>;
+      for (const r of rows) {
+        if (r.province !== 'nasional') seen.add(r.province);
+      }
+      if (rows.length < 1000) break;
+    }
+    const provinces = [...seen].sort();
     cache = { provinces, at: Date.now() };
     return provinces;
   } catch {

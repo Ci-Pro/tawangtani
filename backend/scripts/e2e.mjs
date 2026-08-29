@@ -124,6 +124,12 @@ const main = async () => {
   }
 
   // 8. Laporan harga petani
+  r = await req('/api/market/prices?province=jawa%20timur&level=3');
+  const jatimAll = (r.json?.prices ?? []).filter((p) => p.province === 'jawa timur').length;
+  step('prices: filter provinsi benar (jawa timur)', r.status === 200 && jatimAll > 0 && (r.json?.prices ?? []).length === jatimAll);
+  r = await req('/api/market/prices?province=nasional&level=3');
+  step('prices: harga wajar tidak ada yang ekstrem', r.status === 200 && (r.json?.prices ?? []).every((p) => p.price > 0 && p.price <= 600000 && p.unit));
+
   r = await req('/api/market/report', {
     method: 'POST',
     token: jwt,

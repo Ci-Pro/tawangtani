@@ -1,4 +1,5 @@
 import { MarketPriceRow, listMarketPrices, upsertMarketPrices } from '../store/marketPrices';
+import { sanitizePrice, displayUnitFor } from './priceSanity';
 
 const SOURCE_LABEL = 'Referensi harga nasional (PIHPS - Panel Harga Kementan/Bapanas)';
 
@@ -33,7 +34,7 @@ export function toView(r: MarketPriceRow): PriceView {
     prevPrice: r.prev_price,
     changePct: changePct === null ? null : Math.round(changePct * 10) / 10,
     trend: trendOf(changePct),
-    unit: r.unit,
+    unit: displayUnitFor(r.commodity, r.unit),
     source: r.source,
     updatedAt: r.updated_at,
   };
@@ -285,17 +286,19 @@ export async function refreshPrices(): Promise<{
   const nowIso = new Date().toISOString();
   const updates: MarketPriceRow[] = [];
   for (const row of existing) {
+    if (row.province !== 'nasional') continue;
     const match = collected.find(
       (c) =>
         c.commodity === row.commodity ||
         c.commodity.includes(row.commodity) ||
         row.commodity.includes(c.commodity)
     );
-    if (match && match.price !== row.price) {
+    const clean = match ? sanitizePrice(row.commodity, match.price) : null;
+    if (clean && clean !== row.price) {
       updates.push({
         ...row,
         prev_price: row.price,
-        price: match.price,
+        price: clean,
         source: `upstream:${sources.join('+')}`,
         updated_at: nowIso,
       });

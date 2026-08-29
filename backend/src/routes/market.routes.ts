@@ -9,6 +9,7 @@ import {
   recentFarmerPrices,
 } from '../store/farmerPrices';
 import { config } from '../config';
+import { sanitizePrice, displayUnitFor } from '../services/priceSanity';
 import { requireSupabaseUser } from '../middleware/supabaseUser';
 import { cached, cacheClear } from '../utils/cache';
 import { resolveCommodity } from '../services/commodityMatch';
@@ -166,7 +167,9 @@ marketRouter.post('/ingest', requireSupabaseUser, async (req: Request, res: Resp
         .toLowerCase()
         .slice(0, 40) || 'nasional';
     const bodyLevel = Number((req.body as { level?: unknown })?.level);
-    const clean = raw
+    type IngestRow = { commodity: string; price: number; level: number };
+
+const clean: IngestRow[] = raw
       .filter(
         (p) =>
           KNOWN_COMMODITIES[String(p?.commodity)] !== undefined &&
@@ -176,15 +179,15 @@ marketRouter.post('/ingest', requireSupabaseUser, async (req: Request, res: Resp
         const lvlQ = Number(p.level);
         return {
           commodity: String(p.commodity),
-          price: Math.round(Number(p.price)),
+          price: sanitizePrice(String(p.commodity), Math.round(Number(p.price))),
           level: [1, 2, 3].includes(lvlQ)
             ? lvlQ
             : [1, 2, 3].includes(bodyLevel)
               ? bodyLevel
               : 3,
-        };
+        } as IngestRow | { price: null };
       })
-      .filter((p) => p.price >= 500 && p.price <= 10_000_000);
+      .filter((p) => p.price !== null) as IngestRow[];
     if (clean.length === 0) {
       res.status(400).json({ error: 'Tidak ada harga valid' });
       return;
@@ -217,7 +220,7 @@ marketRouter.post('/ingest', requireSupabaseUser, async (req: Request, res: Resp
           level: c.level,
           price: c.price,
           prev_price: null,
-          unit: KNOWN_COMMODITIES[c.commodity] ?? 'kg',
+          unit: displayUnitFor(c.commodity, KNOWN_COMMODITIES[c.commodity] ?? 'kg'),
           source: 'upstream:kemtan-panelharga',
           updated_at: nowIso,
         });
@@ -249,8 +252,8 @@ marketRouter.post('/report', requireSupabaseUser, async (req: Request, res: Resp
       return;
     }
     const price = Math.round(Number(body.price));
-    if (!Number.isFinite(price) || price < 500 || price > 10_000_000) {
-      res.status(400).json({ error: 'Harga tidak wajar (500 - 10.000.000)' });
+    if (!Number.isFinite(price) || sanitizePrice(commodity, price) === null) {
+      res.status(400).json({ error: 'Harga tidak wajar (di luar kisaran normal komoditas ini)' });
       return;
     }
     const role = body.role === 'beli' ? 'beli' : 'jual';
