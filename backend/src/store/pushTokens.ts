@@ -5,6 +5,15 @@ function base(): { url: string; key: string } | null {
   return { url: config.supabase.url, key: config.supabase.serviceRoleKey };
 }
 
+function baseHeaders(): Record<string, string> {
+  const b = base()!;
+  return {
+    apikey: b.key,
+    Authorization: `Bearer ${b.key}`,
+    'Content-Type': 'application/json',
+  };
+}
+
 async function rest(
   pathUrl: string,
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
@@ -61,20 +70,64 @@ export async function sendExpoPush(messages: Array<{
   title: string;
   body: string;
 }>): Promise<{ sent: number; failed: number }> {
+  // Expo menerima maks 100 notifikasi per permintaan HTTP; batch lebih cepat
+  // & hemat daripada satu permintaan per perangkat.
   let sent = 0;
   let failed = 0;
-  for (const msg of messages) {
+  for (let i = 0; i < messages.length; i += 100) {
+    const chunk = messages.slice(i, i + 100);
     try {
       const res = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...msg, sound: 'default', channelId: 'weather' }),
+        body: JSON.stringify(
+          chunk.map((m) => ({ ...m, sound: 'default', channelId: 'weather' }))
+        ),
       });
-      if (res.ok) sent += 1;
-      else failed += 1;
+      if (!res.ok) {
+        failed += chunk.length;
+        continue;
+      }
+      const data = (await res.json().catch(() => null)) as { data?: unknown[] } | null;
+      if (!Array.isArray(data?.data)) {
+        sent += chunk.length;
+        continue;
+      }
+      for (const item of data.data) {
+        if (item && typeof item === 'object' && (item as { status?: string }).status === 'ok') sent += 1;
+        else failed += 1;
+      }
     } catch {
-      failed += 1;
+      failed += chunk.length;
     }
   }
   return { sent, failed };
+}
+
+export async function logCampaign(c: {
+  title: string;
+  body: string;
+  targets: number;
+  sent: number;
+  failed: number;
+}): Promise<void> {
+  if (!config.supabase.url || !config.supabase.serviceRoleKey) return;
+  try {
+    await fetch(`${config.supabase.url}/rest/v1/push_campaign_log`, {
+      method: 'POST',
+      headers: { ...baseHeaders(), Prefer: 'return=minimal' },
+      body: JSON.stringify(c),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // ledger tidak boleh menggagalkan kampanye
+  }
+}
+
+export async function listCampaigns(limit = 20): Promise<unknown[]> {
+  const rows = (await rest(
+    `push_campaign_log?select=*&order=created_at.desc&limit=${limit}`,
+    'GET'
+  )) as unknown[] | null;
+  return rows ?? [];
 }

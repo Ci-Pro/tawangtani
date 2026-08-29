@@ -2,6 +2,13 @@ import { execSync } from 'node:child_process';
 import { Router, Request, Response } from 'express';
 import { config, hasSupabase } from '../config';
 import { loadCatalog } from '../store/catalog';
+import { PRICE_LIMITS } from '../services/priceSanity';
+import {
+  logCampaign,
+  listCampaigns,
+  listPushTokens,
+  sendExpoPush,
+} from '../store/pushTokens';
 import {
   adminListFarmerPrices,
   adminModerateFarmerPrice,
@@ -56,20 +63,92 @@ adminRouter.get('/farmer-prices', async (req: Request, res: Response) => {
   try {
     const status = typeof req.query.status === 'string' ? req.query.status : undefined;
     const rows = await adminListFarmerPrices(status);
-    res.json({ rows });
+    res.json({
+      rows: rows.map((r) => ({
+        ...r,
+        sanity: PRICE_LIMITS[r.commodity] ?? null,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+adminRouter.get('/farmer-prices/export', async (req: Request, res: Response) => {
+  try {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const rows = await adminListFarmerPrices(status, 10000);
+    const cols = [
+      'created_at',
+      'commodity',
+      'province',
+      'village',
+      'role',
+      'price',
+      'unit',
+      'status',
+      'moderation_note',
+      'user_id',
+    ];
+    const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = rows.map((r) => cols.map((c) => cell(r[c as keyof typeof r])).join(';'));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="laporan-harga-${status ?? 'semua'}.csv"`);
+    res.send([cols.join(';'), ...lines].join('\n'));
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+adminRouter.post('/farmer-prices/batch', async (req: Request, res: Response) => {
+  const { ids, status, note } = (req.body ?? {}) as {
+    ids?: unknown;
+    status?: string;
+    note?: string;
+  };
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: 'ids wajib array tidak kosong' });
+    return;
+  }
+  if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
+    res.status(400).json({ error: "status harus 'approved' | 'rejected' | 'pending'" });
+    return;
+  }
+  if (ids.length > 500) {
+    res.status(400).json({ error: 'maksimal 500 id per operasi batch' });
+    return;
+  }
+  try {
+    let failed = 0;
+    for (const id of ids) {
+      if (typeof id !== 'string') {
+        failed += 1;
+        continue;
+      }
+      try {
+        await adminModerateFarmerPrice(id, status as 'approved', note);
+      } catch {
+        failed += 1;
+      }
+    }
+    res.json({ processed: ids.length - failed, failed });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
 });
 
 adminRouter.post('/farmer-prices/:id/moderate', async (req: Request, res: Response) => {
-  const { status } = req.body as { status?: string };
+  const { status, note } = req.body as { status?: string; note?: string };
   if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
     res.status(400).json({ error: "status harus 'approved' | 'rejected' | 'pending'" });
     return;
   }
   try {
-    await adminModerateFarmerPrice(req.params.id, status as 'approved');
+    await adminModerateFarmerPrice(
+      req.params.id,
+      status as 'approved',
+      typeof note === 'string' ? note : undefined
+    );
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -89,9 +168,10 @@ adminRouter.delete('/farmer-prices/:id', async (req: Request, res: Response) => 
 // Read-only "dashboard operasional": kesehatan sinkron harga, log AI, meta env
 // ---------------------------------------------------------------------------
 
-async function sb(pathUrl: string): Promise<unknown> {
+async function sb(pathUrl: string, method: 'GET' | 'DELETE' = 'GET'): Promise<unknown> {
   if (!config.supabase.url || !config.supabase.serviceRoleKey) return null;
   const res = await fetch(`${config.supabase.url}/rest/v1/${pathUrl}`, {
+    method,
     headers: {
       apikey: config.supabase.serviceRoleKey,
       Authorization: `Bearer ${config.supabase.serviceRoleKey}`,
@@ -99,7 +179,7 @@ async function sb(pathUrl: string): Promise<unknown> {
     signal: AbortSignal.timeout(12000),
   });
   if (!res.ok) throw new Error(`REST ${pathUrl} -> ${res.status}`);
-  return res.json();
+  return method === 'DELETE' ? null : res.json();
 }
 
 adminRouter.get('/market-health', async (_req: Request, res: Response) => {
@@ -226,4 +306,115 @@ adminRouter.get('/meta', async (_req: Request, res: Response) => {
       llmAlt: config.openrouter.apiKey ? config.openrouter.model : null,
     },
   });
+});
+
+// ---------------------------------------------------------------------------
+// Alarm harga & perangkat (cleanup + inspeksi)
+// ---------------------------------------------------------------------------
+
+adminRouter.get('/alerts', async (_req: Request, res: Response) => {
+  try {
+    const [price, change] = await Promise.all([
+      sb('price_alerts?select=*&order=created_at.desc&limit=200'),
+      sb('price_change_alerts?select=*&order=created_at.desc&limit=200'),
+    ]);
+    const [activePrice, totalChange] = await Promise.all([
+      countRows('price_alerts', '&active=eq.true'),
+      countRows('price_change_alerts'),
+    ]);
+    res.json({
+      priceAlerts: Array.isArray(price) ? price : [],
+      changeAlerts: Array.isArray(change) ? change : [],
+      activePrice,
+      totalChange,
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+adminRouter.delete('/alerts/:id', async (req: Request, res: Response) => {
+  try {
+    await sb(`price_alerts?id=eq.${encodeURIComponent(req.params.id)}`, 'DELETE');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+adminRouter.delete('/change-alerts/:id', async (req: Request, res: Response) => {
+  try {
+    await sb(`price_change_alerts?id=eq.${encodeURIComponent(req.params.id)}`, 'DELETE');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+adminRouter.get('/push-tokens', async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(0, Number(req.query.page) || 0);
+    const size = 200;
+    const [rows, total] = await Promise.all([
+      sb(`push_tokens?select=*&order=updated_at.desc&limit=${size}&offset=${page * size}`),
+      countRows('push_tokens'),
+    ]);
+    const arr = Array.isArray(rows) ? rows : [];
+    const geolocated = arr.filter(
+      (t) => Number((t as { lat?: number }).lat) !== 0 || Number((t as { lon?: number }).lon) !== 0
+    ).length;
+    res.json({ rows: arr, total, page, size, geolocated });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+adminRouter.delete('/push-tokens/:token', async (req: Request, res: Response) => {
+  try {
+    await sb(`push_tokens?expo_token=eq.${encodeURIComponent(req.params.token)}`, 'DELETE');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Kampanye notifikasi massal
+// ---------------------------------------------------------------------------
+
+adminRouter.get('/push/campaigns', async (_req: Request, res: Response) => {
+  try {
+    const rows = await listCampaigns(20);
+    res.json({ campaigns: rows });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+adminRouter.post('/push/send', async (req: Request, res: Response) => {
+  const { title, body, limit } = (req.body ?? {}) as {
+    title?: string;
+    body?: string;
+    limit?: number;
+  };
+  if (!title || typeof title !== 'string' || !body || typeof body !== 'string') {
+    res.status(400).json({ error: 'title & body wajib teks' });
+    return;
+  }
+  if (title.length > 120 || body.length > 800) {
+    res.status(400).json({ error: 'title maks 120 & body maks 800 karakter' });
+    return;
+  }
+  try {
+    const devices = await listPushTokens();
+    const cap = Math.min(Math.max(1, Number(limit) || devices.length), 2000);
+    const messages = devices
+      .slice(0, cap)
+      .map((t) => ({ to: t.expo_token, title, body }));
+    const { sent, failed } = await sendExpoPush(messages);
+    await logCampaign({ title, body, targets: messages.length, sent, failed });
+    res.json({ devices: devices.length, targeted: messages.length, sent, failed });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });

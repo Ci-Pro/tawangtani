@@ -79,9 +79,13 @@ export async function adminListFarmerPrices(status?: string, limit = 200): Promi
 
 export async function adminModerateFarmerPrice(
   id: string,
-  status: 'approved' | 'rejected' | 'pending'
+  status: 'approved' | 'rejected' | 'pending',
+  note?: string
 ): Promise<void> {
-  await rest(`farmer_prices?id=eq.${encodeURIComponent(id)}`, 'PATCH', { status });
+  const body: Record<string, unknown> = { status };
+  if (note !== undefined) body.moderation_note = note.slice(0, 300);
+  body.moderated_at = new Date().toISOString();
+  await rest(`farmer_prices?id=eq.${encodeURIComponent(id)}`, 'PATCH', body);
 }
 
 export async function adminDeleteFarmerPrice(id: string): Promise<void> {
