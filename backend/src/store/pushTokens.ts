@@ -8,7 +8,8 @@ function base(): { url: string; key: string } | null {
 async function rest(
   pathUrl: string,
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-  body?: unknown
+  body?: unknown,
+  prefer = 'return=minimal'
 ): Promise<unknown> {
   const b = base();
   if (!b) return null;
@@ -18,7 +19,7 @@ async function rest(
       apikey: b.key,
       Authorization: `Bearer ${b.key}`,
       'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
+      Prefer: prefer,
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -38,7 +39,14 @@ export interface PushTokenRow {
 }
 
 export async function upsertPushToken(row: PushTokenRow): Promise<void> {
-  await rest('push_tokens', 'POST', row);
+  // expo_token adalah PK: merge-duplicates agar registrasi ulang perangkat
+  // yang sama (rutin tiap buka aplikasi) membarui user_id/lokasi, bukan 409.
+  await rest(
+    'push_tokens?on_conflict=expo_token',
+    'POST',
+    row,
+    'resolution=merge-duplicates,return=minimal'
+  );
 }
 
 export async function listPushTokens(): Promise<PushTokenRow[]> {
