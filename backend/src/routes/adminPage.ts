@@ -50,6 +50,9 @@ td{padding:8px;border-bottom:1px solid #1e293b;vertical-align:top}
     <button id="t-sum" class="on" onclick="tab('sum')">Ringkasan</button>
     <button id="t-mod" onclick="tab('mod')">Moderasi Laporan</button>
     <button id="t-kat" onclick="tab('kat')">Katalog Produk</button>
+    <button id="t-hea" onclick="tab('hea')">Sinkron Harga</button>
+    <button id="t-ai" onclick="tab('ai')">Log AI</button>
+    <button id="t-sys" onclick="tab('sys')">Sistem</button>
     <button class="gray" onclick="logout()">Keluar</button>
   </div>
 
@@ -74,6 +77,10 @@ td{padding:8px;border-bottom:1px solid #1e293b;vertical-align:top}
     <div class="searchrow"><input id="qkat" placeholder="Cari produk..." oninput="renderKat()"><span class="muted" id="katcount"></span></div>
     <div class="card" style="overflow-x:auto"><table id="tbl-kat"></table></div>
   </div>
+
+  <div id="p-hea" class="hidden"></div>
+  <div id="p-ai" class="hidden"></div>
+  <div id="p-sys" class="hidden"></div>
 </div>
 </div>
 <div id="msg"></div>
@@ -95,15 +102,29 @@ function logout(){localStorage.removeItem('twt_admin_token');location.reload()}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function fmtRp(n){return n?'Rp'+Number(n).toLocaleString('id-ID'):'-'}
 function fmtTgl(s){return s?new Date(s).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'}):'-'}
+function fmtN(n){return n==null?'-':Number(n).toLocaleString('id-ID')}
+function timeAgo(s){
+  if(!s)return '-';
+  var ms=Date.now()-new Date(s).getTime();
+  if(ms<0)return 'baru saja';
+  var m=Math.floor(ms/60000);
+  if(m<60)return m+' mnt lalu';
+  var h=Math.floor(m/60);
+  if(h<24)return h+' jam lalu';
+  return Math.floor(h/24)+' hari lalu';
+}
 
 function tab(k){
-  ['sum','mod','kat'].forEach(function(x){
+  ['sum','mod','kat','hea','ai','sys'].forEach(function(x){
     $('p-'+x).className=x===k?'':'hidden';
     $('t-'+x).className=x===k?'on':'';
   });
   if(k==='sum') loadSum();
   if(k==='mod') loadMod();
   if(k==='kat') loadKat();
+  if(k==='hea') loadHealth();
+  if(k==='ai') loadAi();
+  if(k==='sys') loadSys();
 }
 
 function init(){
@@ -173,6 +194,83 @@ function renderKat(){
        '<td>'+esc(p.activeIngredient||p.active_ingredient||'-')+'</td><td>'+esc(p.formulation||p.form||'-')+'</td><td>'+(doses||'<span class=muted>-</span>')+'</td></tr>';
   });
   $('tbl-kat').innerHTML=h;
+}
+
+function statCard(n,l,bad){
+  var c='#4ade80';
+  if(n==null||n==='-'||n===0)c='#94a3b8';
+  else if(bad)c='#f87171';
+  return '<div class="card stat" style="margin:0"><div class="n" style="color:'+c+'">'+fmtN(n)+'</div><div class="l">'+esc(l)+'</div></div>';
+}
+
+function loadHealth(){
+  $('p-hea').innerHTML='<div class="card"><div class="muted">Memuat...</div></div>';
+  api('/market-health').then(function(m){
+    var sync=m.lastSync, hist=m.lastSnapshot;
+    var stale=!(sync&&new Date(sync.updated_at).getTime()>Date.now()-864e5);
+    var cards=''+
+      statCard(m.marketPrices,'Baris harga aktif')+
+      statCard(m.history,'Riwayat harga')+
+      statCard(m.nasional,'Nasional (Kemtan)')+
+      statCard(m.perProvinsi,'Provinsi (SP2KP)')+
+      statCard(m.provinces,'Provinsi unik')+
+      statCard(sync?timeAgo(sync.updated_at):'-','Terakhir sinkron'+ (sync?(' · '+esc(sync.source)):''),stale)+
+      statCard(hist?hist.date:'-','Snapshot terakhir');
+    $('p-hea').innerHTML='<div class="card stats">'+cards+'</div>'+
+      (stale?'<div class="card" style="border:1px solid #b45309"><b>Sinkron tampak basi</b> — tidak ada pembaruan data harga dalam 24 jam terakhir. Cek cron SP2KP (edge function <code>sync-kemendag</code>) atau jalankan <code>POST /api/market/refresh</code>.</div>':'');
+  }).catch(function(e){$('p-hea').innerHTML='<div class="card"><div class="muted">'+esc(e.message)+'</div></div>'});
+}
+
+function loadAi(){
+  $('p-ai').innerHTML='<div class="card"><div class="muted">Memuat...</div></div>';
+  api('/ai-logs').then(function(d){
+    var cards=''+
+      statCard(d.total30d,'Query AI (30 hr)')+
+      statCard(d.total7d,'Query AI (7 hr)')+
+      statCard(d.users30d,'Pengguna (30 hr)')+
+      statCard(d.users7d,'Pengguna (7 hr)')+
+      statCard(d.promptTokens,'Token input')+
+      statCard(d.completionTokens,'Token output')+
+      statCard(d.avgLatencyMs,'Latensi rata-rata (ms)');
+    var models='<div class="card"><b>Pemakaian per model</b><table><tr><th>Model</th><th>Query</th><th>Token input</th><th>Token output</th></tr>'+
+      d.models.map(function(m){
+        return '<tr><td>'+esc(m[0])+'</td><td>'+fmtN(m[1].n)+'</td><td>'+fmtN(m[1].prompt)+'</td><td>'+fmtN(m[1].comp)+'</td></tr>';
+      }).join('')+'</table></div>';
+    var rows=(d.recent||[]).map(function(r){
+      var l=Number(r.latency_ms)||0;
+      return '<tr><td>'+fmtTgl(r.created_at)+'</td><td>'+esc(String(r.model_used||'?'))+'</td>'+
+        '<td>'+fmtN(r.prompt_tokens)+'→'+fmtN(r.completion_tokens)+'</td><td>'+fmtN(l)+' ms</td>'+
+        '<td>'+esc(String(r.question||'').slice(0,60))+'</td><td class="muted">'+esc(String(r.user_id||'').slice(0,13))+'</td></tr>';
+    }).join('');
+    $('p-ai').innerHTML='<div class="card stats">'+cards+'</div>'+models+
+      '<div class="card" style="overflow-x:auto"><table><tr><th>Waktu</th><th>Model</th><th>Tokens in→out</th><th>Latensi</th><th>Pertanyaan</th><th>User</th></tr>'+rows+'</table></div>';
+  }).catch(function(e){$('p-ai').innerHTML='<div class="card"><div class="muted">'+esc(e.message)+'</div></div>'});
+}
+
+function loadSys(){
+  $('p-sys').innerHTML='<div class="card"><div class="muted">Memuat...</div></div>';
+  api('/meta').then(function(m){
+    function envRow(k,ok,note){
+      var col=ok?'background:#14532d;color:#bbf7d0':'background:#7f1d1d;color:#fecaca';
+      return '<tr><td>'+esc(k)+'</td><td><span class="badge" style="'+col+'">'+(ok?'Terpasang':'Hilang')+'</span>'+(note?' <span class="muted">'+esc(note)+'</span>':'')+'</td></tr>';
+    }
+    var env='<div class="card"><b>Status env</b><table><tr><th>Kunci</th><th>Status</th></tr>'+
+      envRow('GEMINI_API_KEY',m.envSet.geminiApi)+
+      envRow('OPENROUTER_API_KEY',m.envSet.openrouterApi)+
+      envRow('SUPABASE_URL + SERVICE_ROLE',m.envSet.supabaseService)+
+      envRow('ADMIN_TOKEN khusus',m.envSet.adminTokenKhusus,'default dev masih dipakai!')+
+      envRow('CRON_SECRET',m.envSet.cronSecret)+
+      '</table></div>';
+    var models='<div class="card"><b>Model aktif</b><br>'+
+      '<span class="muted">LLM utama:</span> '+esc(m.models.llm||'-')+
+      (m.models.llmAlt?' &nbsp;·&nbsp; <span class="muted">alt (OpenRouter):</span> '+esc(m.models.llmAlt):'')+
+      '<br><span class="muted">Fallback:</span> '+esc((m.models.fallback||[]).join(', '))+'</div>';
+    $('p-sys').innerHTML=env+models+
+      '<div class="card" style="border:1px solid #334155"><b>Deploy</b><table><tr><th>Commit</th><td>'+esc(m.sha||'-')+'</td></tr>'+
+      '<tr><th>Platform</th><td>'+(m.vercel?'Vercel':'Lokal/else')+'</td></tr>'+
+      '<tr><th>Node</th><td>'+esc(m.node||'-')+'</td></tr>'+
+      '<tr><th>Ping server</th><td>'+fmtTgl(m.ts)+'</td></tr></table></div>';
+  }).catch(function(e){$('p-sys').innerHTML='<div class="card"><div class="muted">'+esc(e.message)+'</div></div>'});
 }
 
 if(TOK){init()}
