@@ -89,12 +89,13 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc)}
   <button class="btn ghost sm" onclick="logout()">Keluar</button>
 </div>
 <div class="wrap">
-<div id="gate" class="card" style="max-width:440px;margin:8vh auto">
+<div id="gate" class="card" style="max-width:460px;margin:8vh auto">
   <div style="margin-bottom:10px;font-weight:700">Masukkan Admin Token</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <input id="tok" type="password" placeholder="ADMIN_TOKEN" style="min-width:220px;flex:1">
     <button class="btn solid" onclick="saveTok()">Masuk</button>
   </div>
+  <div id="gateinfo" class="mut" style="margin-top:12px"></div>
 </div>
 <div id="app" class="hidden">
   <div class="nav">
@@ -146,11 +147,16 @@ function api(path,opts){
   return fetch('/api/admin'+path,opts).then(function(r){
     if(r.status===403){
       toast('Token tidak valid — silakan masuk ulang',true);
-      localStorage.removeItem('twt_admin_token');
+      try{localStorage.removeItem('twt_admin_token')}catch(e){}
       setTimeout(function(){location.reload()},1600);
       throw new Error('Token tidak valid');
     }
-    return r.json();
+    if(!r.ok){
+      return r.text().then(function(t){
+        throw new Error('HTTP '+r.status+(t?': '+String(t).slice(0,120):''));
+      });
+    }
+    return r.json().catch(function(){throw new Error('Respons bukan JSON (HTTP '+r.status+')')});
   });
 }
 function apiBlob(path){
@@ -159,8 +165,21 @@ function apiBlob(path){
     return r.blob();
   });
 }
-function saveTok(){TOK=$('tok').value.trim();if(!TOK)return;localStorage.setItem('twt_admin_token',TOK);init()}
-function logout(){localStorage.removeItem('twt_admin_token');location.reload()}
+function saveTok(){
+  TOK=$('tok').value.trim();
+  if(!TOK){toast('Ketik admin token dulu',true);return}
+  try{localStorage.setItem('twt_admin_token',TOK)}catch(e){/* penyimpanan diblokir: sesi tetap jalan */}
+  gateMsg('Memverifikasi token…');
+  api('/summary').then(function(){
+    gateMsg('Token valid ✓ — memuat panel…');
+    init();
+  }).catch(function(e){
+    gateMsg('Gagal masuk: '+e.message);
+    var gi=$('gateinfo');if(gi)gi.className='mut';
+  });
+}
+function gateMsg(t){var g=$('gateinfo');if(g){g.textContent=t;g.className='mut'}}
+function logout(){try{localStorage.removeItem('twt_admin_token')}catch(e){}location.reload()}
 
 function metaBadge(){
   api('/meta').then(function(m){
