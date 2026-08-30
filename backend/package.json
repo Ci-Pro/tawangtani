@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "node dist/src/index.js",
     "typecheck": "tsc --noEmit",
+    "check:admin": "tsx scripts/check-admin.mjs",
     "seed:knowledge": "tsx scripts/seed-knowledge.ts",
     "seed:market": "tsx scripts/seed-market.ts",
     "seed:market:history": "tsx scripts/backfill-market-history.ts"
