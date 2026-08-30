@@ -8,7 +8,7 @@ export const ADMIN_HTML = `<!DOCTYPE html>
 :root{--bg:#0b1220;--panel:#111a2e;--panel2:#182441;--line:#23324f;--txt:#e6edf7;--mut:#8b9bb4;--acc:#22c55e;--warn:#f59e0b;--danger:#ef4444;--info:#38bdf8;--r:12px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.45;padding-bottom:70px}
-.top{position:sticky;top:0;z-index:20;background:rgba(11,18,32,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.top{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;letter-spacing:.3px}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc)}
 .top .sp{flex:1}
@@ -233,8 +233,8 @@ function loadSum(){
 /* ------------------------------ Moderasi ------------------------------- */
 function loadMod(){
   $('p-mod').innerHTML='<div class="card"><div class="mut">Memuat…</div></div>';
-  api('/farmer-prices'+(MODFILTER?'?status='+MODFILTER:'')).then(function(d){
-var rows=d.rows||[];
+api('/farmer-prices'+(MODFILTER?'?status='+MODFILTER:'')).then(function(d){
+ var rows=d.rows||[];
   var checked=0;
   rows.forEach(function(r){if(SEL[r.id])checked++});
     var toolbar='<div class="card" style="padding:14px"><div class="toolbar">'+
@@ -244,27 +244,28 @@ var rows=d.rows||[];
       '<option value="rejected"'+(MODFILTER==='rejected'?' selected':'')+'>Ditolak</option>'+
       '<option value=""'+(!MODFILTER?' selected':'')+'>Semua</option></select>'+
       '<span class="kbar">'+fmtN(rows.length)+' laporan'+(rows.length?' (ter-filter)':'')+'</span>'+
+      '<span id="selcount" class="kbar" style="color:var(--acc);font-weight:700;min-width:70px"></span>'+
       '<div class="sp" style="flex:1"></div>'+
-      '<button class="btn solid sm" onclick="setAll(true)">Pilih semua ter-filter</button>'+
+      '<button class="btn solid sm" onclick="setAll(true)">Pilih semua</button>'+
       '<button class="btn sm" onclick="setAll(false)">Bersihkan</button>'+
-      '<button class="btn warn sm" onclick="modBatch(\'rejected\')">Tolak '+checked+' terpilih</button>'+
-      '<button class="btn solid sm" onclick="modBatch(\'approved\')">Setujui '+checked+' terpilih</button>'+
-      '<button class="btn ghost sm" onclick="exportCsv()">Ekspor CSV</button>'+
+      '<button id="mod-rej" class="btn warn sm" onclick="modBatch(\'rejected\',this)">Tolak '+checked+'</button>'+
+      '<button id="mod-appr" class="btn solid sm" onclick="modBatch(\'approved\',this)">Setujui '+checked+'</button>'+
+      '<button class="btn ghost sm" onclick="exportCsv()">CSV</button>'+
       '</div></div>';
     if(rows.length===0){
       $('p-mod').innerHTML=toolbar+'<div class="card"><div class="mut">Tidak ada laporan pada filter ini.</div></div>';
       return;
     }
     var h='<div class="card" style="padding:0;overflow:hidden"><div class="tbl" style="max-height:70vh"><table>'+
-      '<tr><th style="width:32px"><input type="checkbox" '+(checked===rows.length?' checked':'')+' onclick="setAll(this.checked)"></th>'+
-      '<th>Tanggal</th><th>Komoditas</th><th>Harga</th><th>Batas wajar</th><th>Arah</th><th>Lokasi</th><th>Status</th><th>Aksi</th></tr>';
+      '<thead><tr><th style="width:32px"><input type="checkbox" '+(checked===rows.length&&rows.length?' checked':'')+' onclick="setAll(this.checked)"></th>'+
+      '<th>Tanggal</th><th>Komoditas</th><th>Harga</th><th>Batas wajar</th><th>Arah</th><th>Lokasi</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var s=r.sanity;
       var wj= s?('<span class="mut">'+fmtRp(s.min)+'–'+fmtRp(s.max)+(s.unit&&s.unit!=='kg'?(' '+esc(s.unit)):'')+'</span>'):'<span class="badge b-mut">tidak dikenal</span>';
       var oos=r.price!=null&&s&&(r.price<s.min||r.price>s.max);
       if(oos)wj='<span class="badge b-warn">di luar wajar!</span> '+wj;
       h+='<tr>'+
-        '<td><input type="checkbox" data-id="'+r.id+'" '+(SEL[r.id]?' checked':'')+' onclick="toggle(\''+r.id+'\')"></td>'+
+        '<td><input type="checkbox" data-id="'+r.id+'" '+(SEL[r.id]?' checked':'')+' onclick="toggleCheck(this,\''+r.id+'\')"></td>'+
         '<td>'+fmtTgl(r.created_at)+(r.moderated_at?'<br><span class="mut">diproses '+timeAgo(r.moderated_at)+'</span>':'')+'</td>'+
         '<td><b>'+esc(r.commodity)+'</b>'+(r.note?'<br><span class="mut">'+esc(r.note.slice(0,60))+'</span>':'')+'</td>'+
         '<td>'+fmtRp(r.price)+'/'+esc(r.unit||'kg')+'</td>'+
@@ -273,47 +274,64 @@ var rows=d.rows||[];
         '<td>'+esc(r.village||'-')+'<br><span class="mut">'+esc(r.province)+'</span></td>'+
         '<td>'+stBadge(r.status)+(r.moderation_note?'<br><span class="mut">'+esc(r.moderation_note.slice(0,60))+'</span>':'')+'</td>'+
         '<td class="row-actions">'+
-        (r.status!=='approved'?'<button class="btn solid sm" onclick="mod(\''+r.id+'\',\'approved\')">Setuju</button>':'')+
-        (r.status!=='rejected'?'<button class="btn warn sm" onclick="mod(\''+r.id+'\',\'rejected\')">Tolak</button>':'')+
-        '<button class="btn danger sm" onclick="del(\''+r.id+'\')">Hapus</button></td></tr>';
+        (r.status!=='approved'?'<button class="btn solid sm" onclick="mod(this,\''+r.id+'\',\'approved\')">Setuju</button>':'')+
+        (r.status!=='rejected'?'<button class="btn warn sm" onclick="mod(this,\''+r.id+'\',\'rejected\')">Tolak</button>':'')+
+        '<button class="btn danger sm" onclick="del(this,\''+r.id+'\')">Hapus</button></td></tr>';
     });
-    h+='</table></div></div>';
+    h+='</tbody></table></div></div>';
     $('p-mod').innerHTML=toolbar+h;
+    syncSelUI();
   }).catch(function(e){toast(e.message,true)});
 }
-function toggle(id){SEL[id]=!SEL[id];loadMod()}
-function setAll(v){
-  SEL={};
-  document.querySelectorAll('#p-mod input[data-id]').forEach(function(b){b.checked=!!v;if(b.checked)SEL[b.getAttribute('data-id')]=true});
-  loadMod();
+/* Seleksi & aksi bersifat lokal + optimistik: tanpa re-render/fetch per klik */
+function selIds(){var a=[];document.querySelectorAll('#p-mod tbody input[data-id]:checked').forEach(function(b){a.push(b.getAttribute('data-id'))});return a}
+function syncSelUI(){
+  var ids=selIds();
+  var s=$('selcount');if(s)s.textContent=ids.length?'('+ids.length+' terpilih)':'';
+  var rows=document.querySelectorAll('#p-mod tbody input[data-id]');
+  var head=document.querySelector('#p-mod thead input[type=checkbox]');
+  if(head&&rows.length)head.checked=(ids.length===rows.length);
+  [['mod-appr','Setujui '],['mod-rej','Tolak ']].forEach(function(p){
+    var el=$(p[0]);if(el){el.textContent=p[1]+ids.length;el.disabled=(ids.length===0)}
+  });
 }
-function mod(id,status){
+function toggleCheck(el,id){SEL[id]=el.checked;syncSelUI()}
+function setAll(v){
+  document.querySelectorAll('#p-mod tbody input[data-id]').forEach(function(b){b.checked=!!v;SEL[b.getAttribute('data-id')]=!!v});
+  syncSelUI();
+}
+function busyOn(el){if(!el)return;el.dataset.orig=el.textContent||'';el.disabled=true;el.textContent='…'}
+function busyOff(el){if(!el)return;el.disabled=false;el.textContent=el.dataset.orig||el.textContent}
+function mod(el,id,status){
+  busyOn(el);
   var note;
   if(status==='rejected'){
     note=window.prompt('Alasan penolakan (opsional, tampil untuk petani nanti):','');
-    if(note===null)return;
+    if(note===null){busyOff(el);return}
   }
   api('/farmer-prices/'+encodeURIComponent(id)+'/moderate',{method:'POST',body:JSON.stringify({status:status,note:note||undefined})})
     .then(function(){toast(status==='approved'?'Disetujui':'Ditolak');loadMod()})
-    .catch(function(e){toast(e.message,true)});
+    .catch(function(e){busyOff(el);toast(e.message,true)});
 }
-function modBatch(status){
-  var ids=[];document.querySelectorAll('#p-mod input[type=checkbox]').forEach(function(b){if(b.checked&&b.getAttribute('data-id'))ids.push(b.getAttribute('data-id'))});
+function modBatch(status,btn){
+  var ids=selIds();
   if(ids.length===0){toast('Pilih laporan dulu',true);return}
   var body={ids:ids,status:status};
   if(status==='rejected'){
     var note=window.prompt('Alasan penolakan untuk '+ids.length+' laporan (opsional):','');
-    if(note===null)return;body.note=note||undefined;
+    if(note===null){syncSelUI();return}body.note=note||undefined;
   }
+  busyOn(btn);
   api('/farmer-prices/batch',{method:'POST',body:JSON.stringify(body)})
     .then(function(r){toast(status==='approved'?'Setuju '+r.processed+' laporan':'Tolak '+r.processed+' laporan');SEL={};loadMod()})
-    .catch(function(e){toast(e.message,true)});
+    .catch(function(e){syncSelUI();toast(e.message,true)});
 }
-function del(id){
+function del(el,id){
   if(!window.confirm('Hapus permanen laporan ini?'))return;
+  busyOn(el);
   api('/farmer-prices/'+encodeURIComponent(id),{method:'DELETE'})
     .then(function(){toast('Terhapus');loadMod()})
-    .catch(function(e){toast(e.message,true)});
+    .catch(function(e){busyOff(el);toast(e.message,true)});
 }
 function exportCsv(){
   apiBlob('/farmer-prices/export'+(MODFILTER?'?status='+MODFILTER:'')).then(function(b){
@@ -449,10 +467,12 @@ function loadKat(){
       '<span class="kbar">'+fmtN(PROD.length)+' produk</span></div>'+
       '<div class="tbl" style="max-height:65vh"><table><tr><th>Produk</th><th>Bahan Aktif</th><th>Bentuk</th><th>Dosis</th></tr><tbody id="tbl-kat"></tbody></table></div></div>';
     window.__PROD=PROD;
-    renderKat();
+    _renderKat();
   });
 }
-function renderKat(){
+var __KATQ=null;
+function renderKat(){clearTimeout(__KATQ);__KATQ=setTimeout(_renderKat,140)}
+function _renderKat(){
   var PROD=window.__PROD||[];
   var q=($('qkat')?$('qkat').value:'').toLowerCase();
   var rows=PROD.filter(function(p){return !q||JSON.stringify(p).toLowerCase().indexOf(q)>=0}).slice(0,80);
