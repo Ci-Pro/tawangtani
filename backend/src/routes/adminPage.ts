@@ -248,8 +248,8 @@ api('/farmer-prices'+(MODFILTER?'?status='+MODFILTER:'')).then(function(d){
       '<div class="sp" style="flex:1"></div>'+
       '<button class="btn solid sm" onclick="setAll(true)">Pilih semua</button>'+
       '<button class="btn sm" onclick="setAll(false)">Bersihkan</button>'+
-      '<button id="mod-rej" class="btn warn sm" onclick="modBatch(\'rejected\',this)">Tolak '+checked+'</button>'+
-      '<button id="mod-appr" class="btn solid sm" onclick="modBatch(\'approved\',this)">Setujui '+checked+'</button>'+
+      '<button id="mod-rej" class="btn warn sm" data-act="bat-rej">Tolak '+checked+'</button>'+
+      '<button id="mod-appr" class="btn solid sm" data-act="bat-appr">Setujui '+checked+'</button>'+
       '<button class="btn ghost sm" onclick="exportCsv()">CSV</button>'+
       '</div></div>';
     if(rows.length===0){
@@ -265,7 +265,7 @@ api('/farmer-prices'+(MODFILTER?'?status='+MODFILTER:'')).then(function(d){
       var oos=r.price!=null&&s&&(r.price<s.min||r.price>s.max);
       if(oos)wj='<span class="badge b-warn">di luar wajar!</span> '+wj;
       h+='<tr>'+
-        '<td><input type="checkbox" data-id="'+r.id+'" '+(SEL[r.id]?' checked':'')+' onclick="toggleCheck(this,\''+r.id+'\')"></td>'+
+        '<td><input type="checkbox" data-id="'+r.id+'"'+(SEL[r.id]?' checked':'')+'></td>'+
         '<td>'+fmtTgl(r.created_at)+(r.moderated_at?'<br><span class="mut">diproses '+timeAgo(r.moderated_at)+'</span>':'')+'</td>'+
         '<td><b>'+esc(r.commodity)+'</b>'+(r.note?'<br><span class="mut">'+esc(r.note.slice(0,60))+'</span>':'')+'</td>'+
         '<td>'+fmtRp(r.price)+'/'+esc(r.unit||'kg')+'</td>'+
@@ -274,9 +274,9 @@ api('/farmer-prices'+(MODFILTER?'?status='+MODFILTER:'')).then(function(d){
         '<td>'+esc(r.village||'-')+'<br><span class="mut">'+esc(r.province)+'</span></td>'+
         '<td>'+stBadge(r.status)+(r.moderation_note?'<br><span class="mut">'+esc(r.moderation_note.slice(0,60))+'</span>':'')+'</td>'+
         '<td class="row-actions">'+
-        (r.status!=='approved'?'<button class="btn solid sm" onclick="mod(this,\''+r.id+'\',\'approved\')">Setuju</button>':'')+
-        (r.status!=='rejected'?'<button class="btn warn sm" onclick="mod(this,\''+r.id+'\',\'rejected\')">Tolak</button>':'')+
-        '<button class="btn danger sm" onclick="del(this,\''+r.id+'\')">Hapus</button></td></tr>';
+        (r.status!=='approved'?'<button class="btn solid sm" data-act="appr" data-id="'+r.id+'">Setuju</button>':'')+
+        (r.status!=='rejected'?'<button class="btn warn sm" data-act="rej" data-id="'+r.id+'">Tolak</button>':'')+
+        '<button class="btn danger sm" data-act="del" data-id="'+r.id+'">Hapus</button></td></tr>';
     });
     h+='</tbody></table></div></div>';
     $('p-mod').innerHTML=toolbar+h;
@@ -295,11 +295,30 @@ function syncSelUI(){
     var el=$(p[0]);if(el){el.textContent=p[1]+ids.length;el.disabled=(ids.length===0)}
   });
 }
-function toggleCheck(el,id){SEL[id]=el.checked;syncSelUI()}
 function setAll(v){
   document.querySelectorAll('#p-mod tbody input[data-id]').forEach(function(b){b.checked=!!v;SEL[b.getAttribute('data-id')]=!!v});
   syncSelUI();
 }
+/* Delegasi aksi: tanpa inline onclick berargumen — bebas konflik kutip & ringan */
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]');if(!b)return;
+  var act=b.getAttribute('data-act'),id=b.getAttribute('data-id')||'',kind=b.getAttribute('data-kind')||'',tok=b.getAttribute('data-tok')||'';
+  if(act==='appr')mod(b,id,'approved');
+  if(act==='rej')mod(b,id,'rejected');
+  if(act==='del')del(b,id);
+  if(act==='bat-appr')modBatch('approved',b);
+  if(act==='bat-rej')modBatch('rejected',b);
+  if(act==='alm-del')delAlert(kind,id);
+  if(act==='tok-del')delTok(tok);
+});
+document.addEventListener('change',function(e){
+  var cb=e.target.closest('#p-mod tbody input[data-id]');if(!cb)return;
+  SEL[cb.getAttribute('data-id')]=cb.checked;syncSelUI();
+});
+document.addEventListener('change',function(e){
+  var cb=e.target.closest('#p-mod thead input[type=checkbox]');if(!cb)return;
+  setAll(cb.checked);
+});
 function busyOn(el){if(!el)return;el.dataset.orig=el.textContent||'';el.disabled=true;el.textContent='…'}
 function busyOff(el){if(!el)return;el.disabled=false;el.textContent=el.dataset.orig||el.textContent}
 function mod(el,id,status){
@@ -367,7 +386,7 @@ function sendPush(){
   var title=$('pshtitle').value.trim(),body=$('pshbody').value.trim();
   if(!title||!body){toast('Judul & isi wajib diisi',true);return}
   var limit=Number($('pshlimit').value)||DEV;
-  if(!window.confirm('Kirim notifikasi ke '+fmtN(Math.min(limit||DEV,DEV))+' perangkat?\n\nJudul: '+title+'\nPesan: '+body.slice(0,60)))return;
+  if(!window.confirm('Kirim notifikasi ke '+fmtN(Math.min(limit||DEV,DEV))+' perangkat?'+String.fromCharCode(10,10)+'Judul: '+title+String.fromCharCode(10)+'Pesan: '+body.slice(0,60)))return;
   api('/push/send',{method:'POST',body:JSON.stringify({title:title,body:body,limit:limit})})
     .then(function(r){toast('Terkirim '+r.sent+', gagal '+r.failed);loadPush()})
     .catch(function(e){toast(e.message,true)});
@@ -394,7 +413,7 @@ function loadAlerts(){
     function tbl(title,rows,colmap,kind){
       if(rows.length===0)return '<div class="card"><h3>'+title+'</h3><div class="mut">Tidak ada data.</div></div>';
       var tr=rows.map(function(r){
-        var acts='<button class="btn danger sm" onclick="delAlert(\''+kind+'\',\''+r.id+'\')">Hapus</button> ';
+        var acts='<button class="btn danger sm" data-act="alm-del" data-kind="'+kind+'" data-id="'+r.id+'">Hapus</button> ';
         var cells=Object.keys(colmap).map(function(k){return colmap[k](r)}).join('');
         return '<tr>'+cells+'<td>'+acts+'</td></tr>';
       }).join('');
@@ -441,7 +460,7 @@ function loadDev(page){
         '<td class="mono">'+esc(r.expo_token.slice(0,34))+'…</td>'+
         '<td class="mono">'+esc((r.user_id||'').slice(0,13))+'-</td>'+
         '<td>'+esc(r.location_name||'-')+'<br><span class="mono mut">'+r.lat+', '+r.lon+'</span></td>'+
-        '<td><button class="btn danger sm" onclick="delTok(\''+t+'\')">Hapus</button></td></tr>';
+        '<td><button class="btn danger sm" data-act="tok-del" data-tok="'+t+'">Hapus</button></td></tr>';
     }).join('');
     var pages=Math.max(1,Math.ceil((d.total||0)/(d.size||200)));
     var pag='<div class="pager"><button class="btn ghost sm"'+(page>0?'':' disabled')+' onclick="loadDev('+(page-1)+')">← Sebelum</button>'+
