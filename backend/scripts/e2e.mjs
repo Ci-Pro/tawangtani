@@ -5,6 +5,7 @@
  *
  * Pemakaian:
  *   BASE_URL=https://... SUPABASE_URL=https://... ANON_KEY=eyJ... node backend/scripts/e2e.mjs
+ *   ADMIN_TOKEN=<akses token admin> ...  # aktifkan cek API panel admin
  *   SKIP_AI=1 ...   # lewati panggilan AI (hemat kuota harian)
  *
  * Exit code 1 bila ada langkah gagal.
@@ -13,6 +14,7 @@
 const BASE = (process.env.BASE_URL || 'https://tawangtani-flame.vercel.app').replace(/\/$/, '');
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bpiqgbjlwkdpnlgvxdrx.supabase.co';
 const ANON_KEY = process.env.ANON_KEY || '';
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const SKIP_AI = process.env.SKIP_AI === '1';
 
 let passed = 0;
@@ -27,12 +29,13 @@ const step = (name, ok, extra = '') => {
   }
 };
 
-async function req(path, { method = 'GET', body, token } = {}) {
+async function req(path, { method = 'GET', body, token, admin } = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(admin ? { 'x-admin-token': admin } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(90_000),
@@ -170,6 +173,32 @@ const main = async () => {
   // 11. Halaman admin
   const admin = await fetch(`${BASE}/admin`, { signal: AbortSignal.timeout(30_000) });
   step('admin: halaman panel', admin.status === 200);
+
+  // 12. API panel admin (pakai akses token admin)
+  if (ADMIN_TOKEN) {
+    r = await req('/api/admin/meta', { admin: ADMIN_TOKEN });
+    step('admin/meta: identitas deploy', r.status === 200 && typeof r.json?.sha === 'string' && !!r.json?.envSet?.supabaseService, `deploy ${r.json?.sha ?? '-'}`);
+    r = await req('/api/admin/summary', { admin: ADMIN_TOKEN });
+    step('admin/summary: ringkasan', r.status === 200 && typeof r.json?.products === 'number', `${r.json?.farmerPending ?? '-'} laporan pending`);
+    r = await req('/api/admin/market-health', { admin: ADMIN_TOKEN });
+    step('admin/market-health: statistik harga', r.status === 200 && Number.isFinite(r.json?.marketPrices) && Number.isFinite(r.json?.history), `harga=${r.json?.marketPrices ?? '-'} riwayat=${r.json?.history ?? '-'}`);
+    r = await req('/api/admin/ai-logs', { admin: ADMIN_TOKEN });
+    step('admin/ai-logs: telemetri AI', r.status === 200 && Array.isArray(r.json?.models) && Array.isArray(r.json?.recent), `log30d=${r.json?.total30d ?? '-'}`);
+    r = await req('/api/admin/alerts', { admin: ADMIN_TOKEN });
+    step('admin/alerts: daftar alarm', r.status === 200 && Array.isArray(r.json?.priceAlerts) && typeof r.json?.activePrice === 'number');
+    r = await req('/api/admin/push-tokens?page=0', { admin: ADMIN_TOKEN });
+    step('admin/push-tokens: daftar perangkat', r.status === 200 && typeof r.json?.total === 'number');
+    r = await req('/api/admin/push/campaigns', { admin: ADMIN_TOKEN });
+    step('admin/campaigns: riwayat notifikasi', r.status === 200 && Array.isArray(r.json?.campaigns));
+    r = await req('/api/admin/farmer-prices?status=pending', { admin: ADMIN_TOKEN });
+    step('admin/farmer-prices: berisi rentang wajar', r.status === 200 && (r.json?.rows ?? []).every((x) => 'sanity' in x), `${(r.json?.rows ?? []).length} baris`);
+    r = await req('/api/admin/meta');
+    step('admin/meta: tanpa token ditolak', r.status === 403);
+    r = await req('/api/admin/summary');
+    step('admin/summary: tanpa token ditolak', r.status === 403);
+  } else {
+    console.log('  ⤼ cek API admin dilewati — set ADMIN_TOKEN untuk mengaktifkan');
+  }
 
   console.log(`\nHasil: ${passed} lulus, ${failed} gagal\n`);
   process.exit(failed > 0 ? 1 : 0);
