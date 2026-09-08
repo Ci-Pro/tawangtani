@@ -11,16 +11,20 @@
 --    deny semua role non-service (service_role menembus RLS).
 --  - price_alerts belum punya index user_id (audit D6).
 
+-- 1) buang policy yang mereferensikan kolom user_id (Postgres tak bisa alter
+--    tipe kolom yang masih dipakai policy: "cannot alter type ... used in a
+--    policy definition"), lalu konversi, lalu buat ulang tanpa ::text.
+drop policy if exists "chat_own_select" on public.chat_messages;
+drop policy if exists "chat_own_insert" on public.chat_messages;
+drop policy if exists "chat_own_delete" on public.chat_messages;
+
 alter table public.chat_messages
   alter column user_id type uuid using user_id::uuid;
 
-drop policy if exists "chat_own_select" on public.chat_messages;
 create policy "chat_own_select" on public.chat_messages
   for select to authenticated using (user_id = auth.uid());
-drop policy if exists "chat_own_insert" on public.chat_messages;
 create policy "chat_own_insert" on public.chat_messages
   for insert to authenticated with check (user_id = auth.uid());
-drop policy if exists "chat_own_delete" on public.chat_messages;
 create policy "chat_own_delete" on public.chat_messages
   for delete to authenticated using (user_id = auth.uid());
 
