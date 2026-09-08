@@ -26,9 +26,13 @@ jobs:
     env:
       BASE_URL: https://tawangtani-flame.vercel.app
       SUPABASE_URL: https://bpiqgbjlwkdpnlgvxdrx.supabase.co
-      # Anon key adalah kunci publik klien, tapi jangan hardcode di repo —
-      # pakai secret org (Repository secrets → SUPABASE_ANON_KEY).
-      ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      # Anon key adalah KUNCI PUBLIK klien (aman tertanam di repo, sama dengan yang
+      # dibundle di APK). Bisa di-override bila kerahasiaan diinginkan:
+      # tambahkan repo secret SUPABASE_ANON_KEY dan nilai ini akan menang.
+      ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwaXFnYmpsd2tkcG5sZ3Z4ZHJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMTUxOTIsImV4cCI6MjEwMjg5MTE5Mn0.BnbUUwfwyJnbrhVMV3LlCjoNwRbj4Y5sQcAkfxp3fOQ' }}
+      # ADMIN_TOKEN adalah secret sungguhan — jangan di-commit. Tanpa secret,
+      # e2e tetap jalan penuh, hanya cek panel admin dilewati (ADMIN_TOKEN di bump).
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN || '' }}
       SKIP_AI: ${{ github.event.inputs.skip_ai == 'true' && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
@@ -38,9 +42,4 @@ jobs:
           node-version: 20
 
       - name: Jalankan E2E lengkap
-        run: |
-          if [ -z "$ANON_KEY" ]; then
-            echo "::warning::Secret SUPABASE_ANON_KEY belum dikonfigurasi — lewati e2e ini. Tambahkan secret lalu re-run."
-            exit 0
-          fi
-          node backend/scripts/e2e.mjs
+        run: node backend/scripts/e2e.mjs
