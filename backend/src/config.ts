@@ -40,7 +40,9 @@ export const config = {
       .map((m) => m.trim())
       .filter(Boolean),
   },
-  adminToken: env('ADMIN_TOKEN', 'dev-admin-token'),
+  // Tanpa fallback: bila ADMIN_TOKEN belum diset, endpoint admin terkunci
+  // (guard router memakai `config.adminToken &&`).
+  adminToken: env('ADMIN_TOKEN'),
   cronSecret: env('CRON_SECRET'),
 };
 

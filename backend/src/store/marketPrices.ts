@@ -26,13 +26,24 @@ export async function listMarketPrices(
   province?: string,
   level?: number
 ): Promise<MarketPriceRow[]> {
-  let path = 'market_prices?select=*&order=commodity.asc';
-  if (commodity) path += `&commodity=eq.${encodeURIComponent(commodity)}`;
-  if (province) path += `&province=ilike.${encodeURIComponent(province.trim())}`;
-  if (level) path += `&level=eq.${level}`;
-  const res = await fetch(`${config.supabase.url}/rest/v1/${path}`, { headers: headers() });
-  if (!res.ok) throw new Error(`REST market_prices -> ${res.status}`);
-  return (await res.json()) as MarketPriceRow[];
+  // Paginasi penuh: tanpa limit/offset PostgREST memotong di 1.000 baris pertama dan
+  // hasil menjadi parsial saat tabel bertambah (sinkron SP2KP/panel harga).
+  const base =
+    'market_prices?select=*&order=commodity.asc' +
+    (commodity ? `&commodity=eq.${encodeURIComponent(commodity)}` : '') +
+    (province ? `&province=ilike.${encodeURIComponent(province.trim())}` : '') +
+    (level ? `&level=eq.${level}` : '');
+  const rows: MarketPriceRow[] = [];
+  for (let offset = 0; offset < 30_000; offset += 1000) {
+    const res = await fetch(`${config.supabase.url}/rest/v1/${base}&limit=1000&offset=${offset}`, {
+      headers: headers(),
+    });
+    if (!res.ok) throw new Error(`REST market_prices -> ${res.status}`);
+    const page = (await res.json()) as MarketPriceRow[];
+    rows.push(...page);
+    if (page.length < 1000) break;
+  }
+  return rows;
 }
 
 export async function listProvinces(): Promise<string[]> {

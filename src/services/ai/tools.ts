@@ -30,12 +30,30 @@ export interface ToolDef {
 }
 
 export const TOOLS: ToolDef[] = [
-  { name: 'get_weather', description: 'Ambil cuaca terkini & kondisi semprot untuk lokasi pengguna' },
-  { name: 'fertilizer_calculator', description: 'Hitung kebutuhan pupuk dari luas lahan dan dosis' },
-  { name: 'pesticide_calculator', description: 'Hitung kebutuhan pestisida dari dosis, volume tangki, luas' },
-  { name: 'product_search', description: 'Cari produk pertanian (pupuk/pestisida) di katalog' },
-  { name: 'farm_context', description: 'Ambil konteks lahan & tanaman aktif pengguna' },
-  { name: 'activity_log', description: 'Simpan aktivitas budidaya ke riwayat' },
+  {
+    name: 'get_weather',
+    description: 'Ambil cuaca terkini lokasi pengguna beserta rekomendasi kondisi penyemprotan',
+  },
+  {
+    name: 'fertilizer_calculator',
+    description: 'Hitung total kebutuhan pupuk dari luas lahan dan dosis',
+  },
+  {
+    name: 'pesticide_calculator',
+    description: 'Hitung kebutuhan pestisida per tangki dan total dari dosis, volume tangki, luas lahan, dan volume air',
+  },
+  {
+    name: 'product_search',
+    description: 'Cari produk pupuk/pestisida di katalog berdasarkan merek, bahan aktif, komoditas, atau target hama',
+  },
+  {
+    name: 'farm_context',
+    description: 'Ambil konteks lahan dan tanaman aktif pengguna (nama, luas, jenis, umur, fase)',
+  },
+  {
+    name: 'activity_log',
+    description: 'Catat aktivitas budidaya pengguna (tanam, pemupukan, penyemprotan, panen, dll)',
+  },
 ];
 
 function searchProducts(ctx: ToolContext, query: string): Product[] {

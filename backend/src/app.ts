@@ -11,9 +11,30 @@ import { adminRouter } from './routes/admin.routes';
 import { ADMIN_HTML } from './routes/adminPage';
 import { errorHandler } from './middleware/errorHandler';
 
+// Allowlist origin browser; aplikasi mobile native tidak mengirim header Origin.
+const CORS_ORIGINS = (
+  process.env.CORS_ORIGINS ||
+  'https://tawangtani-flame.vercel.app,http://localhost:8081,http://localhost:19006'
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 export function createApp(): express.Express {
   const app = express();
-  app.use(cors());
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin || CORS_ORIGINS.includes(origin)) return callback(null, true);
+        return callback(null, false);
+      },
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    })
+  );
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    next();
+  });
   app.use(express.json({ limit: '12mb' }));
 
   app.get('/health', (_req, res) => {

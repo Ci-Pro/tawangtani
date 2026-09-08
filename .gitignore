@@ -21,4 +21,7 @@ ios/build/
 .env
 .env.local
 
+# Supabase CLI state lokal (project ref ter-link, versi tools) — jangan ikut repo
+supabase/.temp/
+
 eas-debug.log
