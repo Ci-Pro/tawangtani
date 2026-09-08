@@ -143,6 +143,33 @@ function parseDirective(text: string): ToolCallOut | null {
   return null;
 }
 
+/**
+ * Model gratis terkadang membalas LANGKAH tool sebagai JSON mentah di field content
+ * (bukan melalui tool_calls native). Deteksi seluruh konten sebagai envelope tool
+ * {tool|name, arguments} agar dilewatkan ke eksekutor alih-alih bocor ke jawaban.
+ */
+function parseWholeEnvelope(text: string | null | undefined): ToolCallOut | null {
+  const trimmed = (text ?? '').trim();
+  if (!trimmed.startsWith('{')) return null;
+  try {
+    const root = JSON.parse(trimmed) as { tool?: unknown; name?: unknown; arguments?: unknown };
+    const name = typeof root.tool === 'string' ? root.tool : typeof root.name === 'string' ? root.name : '';
+    if (!name) return null;
+    let args: Record<string, unknown> = {};
+    if (root.arguments && typeof root.arguments === 'object') args = root.arguments as Record<string, unknown>;
+    else if (typeof root.arguments === 'string') {
+      try {
+        args = JSON.parse(root.arguments) as Record<string, unknown>;
+      } catch {
+        /* biarkan {} */
+      }
+    }
+    return { name, arguments: args };
+  } catch {
+    return null;
+  }
+}
+
 function normalizeMessages(input: ChatMessageIn[]): ORMessage[] {
   const out: ORMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }];
   for (const m of input) {
@@ -263,7 +290,7 @@ export async function runAgent(
       continue;
     }
 
-    const directive = parseDirective(result.content);
+    const directive = parseDirective(result.content) ?? parseWholeEnvelope(result.content);
     if (directive) {
       const toolName = resolveToolName(directive.name);
       let toolText: string;
