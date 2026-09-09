@@ -1,0 +1,72 @@
+name: ci-check
+
+# Gerbang kualitas cepat — wajib ijo SEBELUM e2e produksi:
+#   typecheck FE + BE, unit test (jest), kontrak tools AI (FE ⊆ BE), konsistensi versi.
+# Tidak butuh secret apa pun; ~1-2 menit.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'backend/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - 'tsconfig.json'
+      - 'jest.config.*'
+      - 'jest.setup.*'
+      - '.github/workflows/ci-check.yml'
+      - '.github/workflows/e2e-test.yml'
+
+concurrency:
+  group: ci-check
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Pasang dependensi
+        run: npm ci
+
+      - name: Typecheck frontend
+        run: npm run typecheck
+
+      - name: Unit test (jest)
+        run: npm test -- --ci
+
+      - name: Versi konsisten
+        run: npm run check:version
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Pasang dependensi backend
+        working-directory: backend
+        run: npm ci
+
+      - name: Typecheck backend
+        working-directory: backend
+        run: npm run typecheck
+
+      - name: Kontrak tools AI (FE ⊆ BE)
+        working-directory: backend
+        run: npm run check:contract
