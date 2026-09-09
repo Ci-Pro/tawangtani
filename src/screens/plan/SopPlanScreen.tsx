@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -240,7 +240,7 @@ const SopPlanScreen: React.FC = () => {
       </Card>
 
       {plan?.crop ? (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <View>
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Ionicons name="leaf" size={22} color={palette.primary} />
@@ -291,7 +291,7 @@ const SopPlanScreen: React.FC = () => {
               onCalc={p.doseText ? () => useDose(p) : undefined}
             />
           ))}
-        </ScrollView>
+        </View>
       ) : null}
     </Screen>
   );
