@@ -14,6 +14,8 @@ export interface PriceView {
   unit: string;
   source: string;
   updatedAt: string;
+  /** Umur data jam (0=baru), null bila tak diketahui. */
+  dataAgeHours: number | null;
 }
 
 function trendOf(changePct: number | null): 'naik' | 'turun' | 'stabil' {
@@ -37,6 +39,9 @@ export function toView(r: MarketPriceRow): PriceView {
     unit: displayUnitFor(r.commodity, r.unit),
     source: r.source,
     updatedAt: r.updated_at,
+    dataAgeHours: r.updated_at
+      ? Math.round((Date.now() - new Date(r.updated_at).getTime()) / 3_600_000 * 10) / 10
+      : null,
   };
 }
 

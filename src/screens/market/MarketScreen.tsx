@@ -21,7 +21,7 @@ import { PriceChart, ChartPoint } from '@/components/PriceChart';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useLocation } from '@/hooks/useWeather';
-import { syncHargaJikaPerlu, PROVINCE_LIST } from '@/services/kemtanSync';
+import { syncHargaJikaPerlu, saveProvinceDataAge, PROVINCE_LIST } from '@/services/kemtanSync';
 import { getExpoPushToken } from '@/services/pushRegister';
 import { supabase } from '@/services/supabase';
 import { COMMODITY_LABELS as LABELS, MARKET_LEVELS as LEVELS, MARKET_LEVEL_NAME as LEVEL_NAME } from '@/constants/commodities';
@@ -43,6 +43,7 @@ interface PriceView {
   unit: string;
   hint: string;
   updatedAt?: string;
+  dataAgeHours?: number | null;
 }
 
 interface Bucket {
@@ -173,12 +174,16 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
         setOffline(false);
         setLoadError(false);
         saveCache(`market_${p}_${l}`, rows);
+        const maxAge = rows.length
+          ? Math.max(...rows.map((r) => r.dataAgeHours ?? 0))
+          : Number.NaN;
+        saveProvinceDataAge(p, Number.isFinite(maxAge) ? maxAge : Number.NaN);
         publishMarketWidget(
           rows.map((r) => ({ name: commodityLabel(r.commodity, language), price: r.price })),
           p
         );
       } catch {
-        const cached = await loadCache<PriceView[]>(`market_${p}_${l}`);
+        const cached = await loadCache<PriceView[]>(`market_${p}_${l}`, 60 * 60 * 1000);
         if (cached && cached.data.length > 0) {
           setPrices(cached.data);
           setOffline(true);
@@ -538,6 +543,19 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
             </Text>
           </View>
         )}
+        {(() => {
+          const maxAge = prices && prices.length ? Math.max(...prices.map((p) => p.dataAgeHours ?? 0)) : 0;
+          if (!prices || maxAge < 24) return null;
+          const hours = Math.round(maxAge);
+          return (
+            <View style={[styles.offlineBar, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Ionicons name="time-outline" size={14} color={palette.warning} />
+              <Text style={[styles.offlineText, { color: palette.textMuted }]}>
+                Data {PROV_LABEL(province)} belum diperbarui ~{hours >= 24 && hours % 24 === 0 ? `${hours / 24} hari` : `${hours} jam`} — coba tarik refresh.
+              </Text>
+            </View>
+          );
+        })()}
         {pendingSync > 0 && (
           <View style={[styles.offlineBar, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <Ionicons name="sync-outline" size={14} color={palette.primary} />
@@ -1194,6 +1212,23 @@ const MarketScreen: React.FC<RootProps<'Market'>> = ({ navigation }) => {
               <TouchableOpacity onPress={() => setReportModal(false)}>
                 <Ionicons name="close" size={22} color={palette.textMuted} />
               </TouchableOpacity>
+            </View>
+            <View
+              style={{
+                backgroundColor: palette.background,
+                borderColor: palette.border,
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+                marginBottom: 10,
+              }}
+            >
+              <Text style={{ color: palette.textMuted, fontSize: 11.5, lineHeight: 16 }}>
+                <Text style={{ color: palette.primary, fontWeight: '800' }}>1.</Text> Pilih komoditas & jual/beli{'  '}
+                <Text style={{ color: palette.primary, fontWeight: '800' }}>2.</Text> Isi harga riil di daerah Anda{'  '}
+                <Text style={{ color: palette.primary, fontWeight: '800' }}>3.</Text> Kirim — terverifikasi & dipakai
+                mengoreksi harga resmi bila basi.
+              </Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
               {Object.keys(LABELS).map((c) => (

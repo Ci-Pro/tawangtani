@@ -77,6 +77,14 @@ export async function adminListFarmerPrices(status?: string, limit = 200): Promi
   return ((await rest(q, 'GET')) as FarmerPriceRow[] | null) ?? [];
 }
 
+export async function getFarmerPrice(id: string): Promise<FarmerPriceRow | null> {
+  const rows = (await rest(
+    `farmer_prices?select=*&id=eq.${id}&limit=1`,
+    'GET'
+  )) as FarmerPriceRow[] | null;
+  return rows?.[0] ?? null;
+}
+
 export async function adminModerateFarmerPrice(
   id: string,
   status: 'approved' | 'rejected' | 'pending',

@@ -56,6 +56,7 @@ async function main(): Promise<void> {
         rows.push({
           commodity: it.commodity,
           province: 'nasional',
+          level: 3,
           date: ds,
           price,
           source: SOURCE,
@@ -76,6 +77,7 @@ async function main(): Promise<void> {
         rows.push({
           commodity: it.commodity,
           province: 'nasional',
+          level: 3,
           date: ds,
           price,
           source: SOURCE,
@@ -87,7 +89,7 @@ async function main(): Promise<void> {
   console.log(`Upsert ${rows.length} baris riwayat...`);
   for (let i = 0; i < rows.length; i += 200) {
     const chunk = rows.slice(i, i + 200);
-    const res = await fetch(`${config.supabase.url}/rest/v1/market_price_history?on_conflict=commodity,province,date`, {
+    const res = await fetch(`${config.supabase.url}/rest/v1/market_price_history?on_conflict=commodity,province,level,date`, {
       method: 'POST',
       headers: {
         apikey: config.supabase.serviceRoleKey,

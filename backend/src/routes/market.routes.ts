@@ -14,6 +14,8 @@ import { requireSupabaseUser } from '../middleware/supabaseUser';
 import { cached, cacheClear } from '../utils/cache';
 import { resolveCommodity } from '../services/commodityMatch';
 import { resolveProvince } from '../services/provinceMatch';
+import { runUpstreamSync } from '../services/upstreamSync';
+import { mergeFarmerReference } from '../services/farmerReference';
 
 export const marketRouter = Router();
 
@@ -130,6 +132,40 @@ marketRouter.post('/refresh', async (req: Request, res: Response) => {
       return;
     }
     const result = await refreshPrices();
+    cacheClear();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/**
+ * Sinkron penuh terjadwal (Vercel cron @ 06:00 & 18:00 UTC): panen 38 provinsi
+ * × 3 tingkat harga PIHPS, banding & simpan beda, snapshot riwayat, catat
+ * kesehatan sinkron. Diproteksi Bearer cronSecret.
+ */
+marketRouter.post('/sync-cron', async (req: Request, res: Response) => {
+  try {
+    if (!config.cronSecret || req.headers.authorization !== `Bearer ${config.cronSecret}`) {
+      res.status(401).json({ error: 'Cron secret tidak valid' });
+      return;
+    }
+    const result = await runUpstreamSync();
+    cacheClear();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/** Sinkron penuh manual dari dashboard admin (x-admin-token). */
+marketRouter.post('/sync', async (req: Request, res: Response) => {
+  try {
+    if (config.adminToken && req.headers['x-admin-token'] !== config.adminToken) {
+      res.status(401).json({ error: 'Admin token tidak valid' });
+      return;
+    }
+    const result = await runUpstreamSync();
     cacheClear();
     res.json({ ok: true, ...result });
   } catch (err) {
@@ -281,6 +317,14 @@ marketRouter.post('/report', requireSupabaseUser, async (req: Request, res: Resp
       status,
     });
     cacheClear('reports|');
+    if (status === 'approved') {
+      try {
+        await mergeFarmerReference(commodity, province);
+        cacheClear('prices|');
+      } catch {
+        // koreksi harga berbasis laporan bersifat opsional
+      }
+    }
     res.json({ ok: true, status });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

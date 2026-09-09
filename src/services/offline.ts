@@ -22,11 +22,16 @@ export async function saveCache(key: string, data: unknown): Promise<void> {
   } catch {}
 }
 
-export async function loadCache<T>(key: string): Promise<{ data: T; at: number } | null> {
+/** Baca data cache; bila `maxAgeMs` diberikan dan data lebih tua dari itu, anggap basi (kembali null). */
+export async function loadCache<T>(
+  key: string,
+  maxAgeMs?: number
+): Promise<{ data: T; at: number } | null> {
   try {
     const raw = await AsyncStorage.getItem(cacheKey(key));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { data: T; at: number };
+    if (maxAgeMs && Date.now() - parsed.at > maxAgeMs) return null;
     return parsed;
   } catch {
     return null;

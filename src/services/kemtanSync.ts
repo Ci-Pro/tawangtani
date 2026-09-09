@@ -5,6 +5,8 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 
 const LAST_SYNC_KEY = 'kemtan_last_ingest';
 const THROTTLE_MS = 20 * 60 * 60 * 1000;
+const STALE_THROTTLE_MS = 60 * 60 * 1000;
+const STALE_AGE_HOURS = 24;
 
 const KEMTAN_BASE = 'https://app3.pertanian.go.id/panelharga/export_harian_excel.php';
 
@@ -201,14 +203,28 @@ export async function fetchKemtanPrices(province?: string): Promise<KemtanPrice[
 }
 
 /**
- * Dipanggil diam-diam saat layar Harga dibuka. Maksimal sekali per ~20 jam
- * per perangkat & wilayah. Gagal diabaikan sepenuhnya.
+ * Minta perangkat lain (IP seluler, lolos WAF Kementan) menyumbang harga untuk
+ * provinsi tersebut ketika datanya belum realtime. Dipanggil oleh layar Harga.
+ */
+export async function saveProvinceDataAge(province: string | undefined, ageHours: number): Promise<void> {
+  try {
+    const provKey = (province ?? 'nasional').toLowerCase();
+    await AsyncStorage.setItem(`${LAST_SYNC_KEY}:${provKey}:age`, String(ageHours));
+  } catch {}
+}
+
+/**
+ * Dipanggil diam-diam saat layar Harga dibuka. Frekuensi adaptif: bila harga
+ * provinsi berumur >=24 jam, tarik ulang tiap ~1 jam; bila segar, tunggu 20 jam.
+ * Gagal diabaikan sepenuhnya.
  */
 export async function syncHargaJikaPerlu(province?: string): Promise<void> {
   try {
     const provKey = (province ?? 'nasional').toLowerCase();
     const last = Number((await AsyncStorage.getItem(`${LAST_SYNC_KEY}:${provKey}`)) ?? 0);
-    if (Date.now() - last < THROTTLE_MS) return;
+    const age = Number((await AsyncStorage.getItem(`${LAST_SYNC_KEY}:${provKey}:age`)) ?? NaN);
+    const throttle = Number.isFinite(age) && age >= STALE_AGE_HOURS ? STALE_THROTTLE_MS : THROTTLE_MS;
+    if (Date.now() - last < throttle) return;
     await AsyncStorage.setItem(`${LAST_SYNC_KEY}:${provKey}`, String(Date.now()));
     if (!isSupabaseConfigured) return;
     const backendUrl = useSettingsStore.getState().backendUrl?.trim();

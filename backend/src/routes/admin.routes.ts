@@ -14,7 +14,10 @@ import {
   adminModerateFarmerPrice,
   adminDeleteFarmerPrice,
   countRows,
+  getFarmerPrice,
 } from '../store/farmerPrices';
+import { mergeFarmerReference } from '../services/farmerReference';
+import { cacheClear } from '../utils/cache';
 
 export const adminRouter = Router();
 
@@ -144,11 +147,20 @@ adminRouter.post('/farmer-prices/:id/moderate', async (req: Request, res: Respon
     return;
   }
   try {
+    const row = await getFarmerPrice(req.params.id);
     await adminModerateFarmerPrice(
       req.params.id,
       status as 'approved',
       typeof note === 'string' ? note : undefined
     );
+    if (status === 'approved' && row) {
+      try {
+        await mergeFarmerReference(row.commodity, row.province);
+        cacheClear('prices|');
+      } catch {
+        // koreksi harga berbasis laporan bersifat opsional
+      }
+    }
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
