@@ -1,5 +1,61 @@
 import { postJson } from '@/services/api/client';
-import { SopPlan, SopPlanStage, GrowthStage } from '@/types';
+import { SopPlan, SopPlanStage, SopPhase, SopStep, GrowthStage } from '@/types';
+
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function addDays(iso: string, days: number): string {
+  return addDaysISO(iso, days);
+}
+
+export function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Tanggal patokan jadwal SOP: tanggal tanam bila tersedia, atau "hari ini ± titik
+ * tengah fase aktif" bila lahan belum punya tanggal (fase sekarang).
+ */
+export function planBaseDate(plan: SopPlan | null, explicit?: string | null): string | null {
+  if (explicit && /^\d{4}-\d{2}-\d{2}$/.test(explicit)) return explicit;
+  const active = plan?.phases?.find((p) => p.active);
+  if (active) {
+    const mid = Math.round((active.hstStart + active.hstEnd) / 2);
+    return addDaysISO(todayISO(), -mid);
+  }
+  return null;
+}
+
+export interface PlannedStep {
+  key: string;
+  phase: SopPhase;
+  step: SopStep;
+  date: string;
+}
+
+/** Konversi langkah-langkah SOP menjadi entri ber-tanggal nyata (untuk kalender). */
+export function planStepSchedule(plan: SopPlan, base: string | null): PlannedStep[] {
+  const out: PlannedStep[] = [];
+  for (const p of plan.phases ?? []) {
+    p.steps.forEach((s, i) => {
+      const offset =
+        p.steps.length <= 1
+          ? p.hstStart
+          : p.hstStart + Math.round((i / (p.steps.length - 1)) * (p.hstEnd - p.hstStart));
+      out.push({
+        key: `${plan.crop?.cropType ?? 'sop'}-${p.stage}-${s.id}`,
+        phase: p,
+        step: s,
+        date: base ? addDaysISO(base, offset) : todayISO(),
+      });
+    });
+  }
+  return out;
+}
 
 export interface SopPlanInput {
   cropType: string;

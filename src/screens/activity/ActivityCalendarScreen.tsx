@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -6,7 +6,11 @@ import { Card, SectionHeader } from '@/components/Card';
 import { EmptyState, Screen } from '@/components/Screen';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useActivityStore, activityLabel } from '@/store/useActivityStore';
-import { ActivityType, FarmActivity } from '@/types';
+import { useSopPlanStore } from '@/store/useSopPlanStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { fetchWeatherCached, describeWeatherCode } from '@/services/weather/openMeteo';
+import { planStepSchedule, todayISO } from '@/services/ai/sopPlan';
+import { ActivityType, FarmActivity, WeatherDailyItem } from '@/types';
 
 const MONTHS_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -33,11 +37,48 @@ const ActivityCalendarScreen: React.FC = () => {
   const items = useActivityStore((s) => s.items);
   const toggleDone = useActivityStore((s) => s.toggleDone);
   const remove = useActivityStore((s) => s.remove);
+  const addActivity = useActivityStore((s) => s.add);
+
+  const pinned = useSopPlanStore((s) => s.pinned);
+  const loggedKeys = useSopPlanStore((s) => s.loggedKeys);
+  const markLogged = useSopPlanStore((s) => s.markLogged);
+
+  const coords = useSettingsStore((s) => s.coords);
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [selected, setSelected] = useState<string>(isoDate(now.getFullYear(), now.getMonth(), now.getDate()));
+  const [daily, setDaily] = useState<WeatherDailyItem[] | null>(null);
+
+  useEffect(() => {
+    if (!coords) return;
+    let alive = true;
+    fetchWeatherCached(coords.lat, coords.lon)
+      .then((w) => alive && setDaily(w.daily))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [coords?.lat, coords?.lon]);
+
+  const plannedByDate = useMemo(() => {
+    const map = new Map<string, Array<{ key: string; label: string; activity: ActivityType; doseText?: string }>>();
+    if (!pinned) return map;
+    const planned = planStepSchedule(pinned.plan, pinned.base).filter((e) => !loggedKeys.includes(e.key));
+    for (const e of planned) {
+      map.set(e.date, [
+        ...(map.get(e.date) ?? []),
+        {
+          key: e.key,
+          label: `${e.step.title}`,
+          activity: e.step.activity,
+          doseText: e.phase.doseText ?? undefined,
+        },
+      ]);
+    }
+    return map;
+  }, [pinned, loggedKeys]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, FarmActivity[]>();
@@ -68,7 +109,22 @@ const ActivityCalendarScreen: React.FC = () => {
     setYear(y);
   };
 
+  const logPlanned = async (key: string, label: string, activity: ActivityType, date: string, doseText?: string) => {
+    const today = todayISO();
+    await addActivity({
+      cropLabel: pinned?.plan.crop?.label,
+      activity,
+      date,
+      remindAt: date > today ? `${date}T07:00:00` : undefined,
+      doseText,
+      note: `Rencana SOP ${pinned?.plan.crop?.label ?? ''}`.trim(),
+      source: 'ai',
+    });
+    markLogged(key);
+  };
+
   const selectedItems = byDate.get(selected) ?? [];
+  const selectedPlanned = plannedByDate.get(selected) ?? [];
 
   return (
     <Screen>
@@ -84,6 +140,38 @@ const ActivityCalendarScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
+      {daily && daily.length > 0 ? (
+        <Card>
+          <View style={styles.weatherRow}>
+            {daily.slice(0, 7).map((d) => {
+              const wc = describeWeatherCode(d.weatherCode);
+              const isSel = d.date === selected;
+              return (
+                <TouchableOpacity
+                  key={d.date}
+                  onPress={() => setSelected(d.date)}
+                  style={[
+                    styles.weatherCell,
+                    isSel && { backgroundColor: palette.primarySoft, borderRadius: 10 },
+                  ]}
+                >
+                  <Text style={{ color: palette.textMuted, fontSize: 10, fontWeight: '700' }}>
+                    {new Date(`${d.date}T00:00:00`).toLocaleDateString('id-ID', { weekday: 'short' })}
+                  </Text>
+                  <Text style={{ fontSize: 14, marginVertical: 2 }}>{wc.icon === 'sunny-outline' ? '☀️' : wc.icon === 'cloudy-outline' ? '⛅' : '🌧️'}</Text>
+                  <Text style={{ color: palette.text, fontSize: 11, fontWeight: '800' }}>
+                    {Math.round(d.tempMax)}°
+                  </Text>
+                  {d.precipitationSum > 0.1 ? (
+                    <Text style={{ color: '#3b82f6', fontSize: 9 }}>💧{Math.round(d.precipitationSum)}mm</Text>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </Card>
+      ) : null}
+
       <Card>
         <View style={styles.weekRow}>
           {DAYS_ID.map((d) => (
@@ -98,6 +186,7 @@ const ActivityCalendarScreen: React.FC = () => {
               {cells.slice(row * 7, row * 7 + 7).map((cell, col) => {
                 if (!cell.iso) return <View key={col} style={styles.dayCell} />;
                 const dayItems = byDate.get(cell.iso) ?? [];
+                const dayPlanned = plannedByDate.get(cell.iso) ?? [];
                 const isToday = cell.iso === isoDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
                 const isSelected = cell.iso === selected;
                 return (
@@ -119,10 +208,13 @@ const ActivityCalendarScreen: React.FC = () => {
                       {cell.day}
                     </Text>
                     <View style={styles.dotRow}>
-                      {dayItems.slice(0, 3).map((it) => (
+                      {dayItems.slice(0, 2).map((it) => (
+                        <View key={it.id} style={[styles.dot, { backgroundColor: TYPE_COLOR[it.activity] }]} />
+                      ))}
+                      {dayPlanned.slice(0, 2).map((pl) => (
                         <View
-                          key={it.id}
-                          style={[styles.dot, { backgroundColor: TYPE_COLOR[it.activity] }]}
+                          key={pl.key}
+                          style={[styles.dot, styles.dotPlanned, { borderColor: TYPE_COLOR[pl.activity] }]}
                         />
                       ))}
                     </View>
@@ -139,53 +231,89 @@ const ActivityCalendarScreen: React.FC = () => {
               <Text style={{ color: palette.textMuted, fontSize: 9.5 }}>{activityLabel(t)}</Text>
             </View>
           ))}
+          <View style={styles.legendItem}>
+            <View style={[styles.dot, styles.dotPlanned, { borderColor: '#6b7280' }]} />
+            <Text style={{ color: palette.textMuted, fontSize: 9.5 }}>Rencana SOP</Text>
+          </View>
+          {pinned ? (
+            <View style={styles.legendItem}>
+              <Ionicons name="leaf" size={10} color="#2f9e44" />
+              <Text style={{ color: palette.textMuted, fontSize: 9.5 }}>
+                {pinned.plan.crop?.label} (pin)
+              </Text>
+            </View>
+          ) : null}
         </View>
       </Card>
 
       <SectionHeader title={`Aktivitas ${selected.split('-').reverse().join('/')}`} />
-      {selectedItems.length === 0 ? (
-        <EmptyState icon="🗓️" title="Tidak ada aktivitas" subtitle="Tambahkan lewat tab Aktivitas." />
+      {selectedItems.length === 0 && selectedPlanned.length === 0 ? (
+        <EmptyState icon="🗓️" title="Tidak ada aktivitas" subtitle="Tambahkan lewat tab Aktivitas atau Rencana SOP." />
       ) : (
-        selectedItems.map((it) => (
-          <Card key={it.id}>
-            <View style={styles.itemRow}>
-              <View style={[styles.itemDot, { backgroundColor: TYPE_COLOR[it.activity] }]} />
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    color: it.done ? palette.textMuted : palette.text,
-                    fontWeight: '800',
-                    textDecorationLine: it.done ? 'line-through' : 'none',
-                  }}
-                >
-                  {activityLabel(it.activity)}
-                  {it.cropLabel ? ` — ${it.cropLabel}` : ''}
-                </Text>
-                {it.productName ? (
-                  <Text style={{ color: palette.textMuted, fontSize: 12.5, marginTop: 2 }}>
-                    {it.productName}
-                    {it.doseText ? ` • ${it.doseText}` : ''}
+        <>
+          {selectedItems.map((it) => (
+            <Card key={it.id}>
+              <View style={styles.itemRow}>
+                <View style={[styles.itemDot, { backgroundColor: TYPE_COLOR[it.activity] }]} />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: it.done ? palette.textMuted : palette.text,
+                      fontWeight: '800',
+                      textDecorationLine: it.done ? 'line-through' : 'none',
+                    }}
+                  >
+                    {activityLabel(it.activity)}
+                    {it.cropLabel ? ` — ${it.cropLabel}` : ''}
                   </Text>
-                ) : null}
-                {it.note ? (
-                  <Text style={{ color: palette.textMuted, fontSize: 12.5, marginTop: 2 }}>
-                    {it.note}
-                  </Text>
-                ) : null}
+                  {it.productName ? (
+                    <Text style={{ color: palette.textMuted, fontSize: 12.5, marginTop: 2 }}>
+                      {it.productName}
+                      {it.doseText ? ` • ${it.doseText}` : ''}
+                    </Text>
+                  ) : null}
+                  {it.note ? (
+                    <Text style={{ color: palette.textMuted, fontSize: 12.5, marginTop: 2 }}>
+                      {it.note}
+                    </Text>
+                  ) : null}
+                </View>
+                <TouchableOpacity onPress={() => toggleDone(it.id)}>
+                  <Ionicons
+                    name={it.done ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={24}
+                    color={it.done ? palette.primary : palette.textMuted}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => remove(it.id)}>
+                  <Ionicons name="trash-outline" size={19} color={palette.danger} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => toggleDone(it.id)}>
-                <Ionicons
-                  name={it.done ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={24}
-                  color={it.done ? palette.primary : palette.textMuted}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => remove(it.id)}>
-                <Ionicons name="trash-outline" size={19} color={palette.danger} />
-              </TouchableOpacity>
-            </View>
-          </Card>
-        ))
+            </Card>
+          ))}
+
+          {selectedPlanned.map((pl) => (
+            <Card key={pl.key}>
+              <View style={styles.itemRow}>
+                <View style={[styles.itemDot, styles.dotPlanned, { borderColor: TYPE_COLOR[pl.activity] }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: palette.textMuted, fontWeight: '700' }}>
+                    {activityLabel(pl.activity)} — {pl.label}
+                  </Text>
+                  {pl.doseText ? (
+                    <Text style={{ color: palette.textMuted, fontSize: 12.5, marginTop: 2 }}>{pl.doseText}</Text>
+                  ) : null}
+                  <Text style={{ color: palette.primary, fontSize: 10.5, fontWeight: '800', marginTop: 2 }}>
+                    RENCANA SOP {pinned?.plan.crop?.label ?? ''}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => logPlanned(pl.key, pl.label, pl.activity, selected, pl.doseText)}>
+                  <Ionicons name="add-circle-outline" size={24} color={palette.primary} />
+                </TouchableOpacity>
+              </View>
+            </Card>
+          ))}
+        </>
       )}
     </Screen>
   );
@@ -202,8 +330,11 @@ const styles = StyleSheet.create({
   weekRow: { flexDirection: 'row' },
   weekCell: { flex: 1, textAlign: 'center', fontSize: 11.5, fontWeight: '700', paddingVertical: 4 },
   dayCell: { flex: 1, alignItems: 'center', paddingVertical: 6, minHeight: 44 },
-  dotRow: { flexDirection: 'row', gap: 2, marginTop: 3 },
+  dotRow: { flexDirection: 'row', gap: 2, marginTop: 3, alignItems: 'center' },
   dot: { width: 5, height: 5, borderRadius: 3 },
+  dotPlanned: { backgroundColor: 'transparent', borderWidth: 1, width: 6, height: 6, borderRadius: 3 },
+  weatherRow: { flexDirection: 'row', gap: 6 },
+  weatherCell: { flex: 1, alignItems: 'center', paddingVertical: 6 },
   legendRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

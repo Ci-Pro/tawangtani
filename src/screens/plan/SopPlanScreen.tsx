@@ -12,17 +12,12 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useFarmStore } from '@/store/useFarmStore';
 import { useActivityStore, activityLabel } from '@/store/useActivityStore';
-import { fetchSopPlan, SOP_SUPPORTED_CROPS, SOP_STAGES, stageLabel, parseDoseFromText } from '@/services/ai/sopPlan';
+import { fetchSopPlan, SOP_SUPPORTED_CROPS, SOP_STAGES, stageLabel, parseDoseFromText, planBaseDate, planStepSchedule, addDays } from '@/services/ai/sopPlan';
 import { todayISO, fmtDateID } from '@/utils/date';
 import { AREA_LABEL } from '@/utils/format';
 import { RootStackParamList } from '@/navigation/types';
+import { useSopPlanStore } from '@/store/useSopPlanStore';
 import { AreaUnit, SopPlan, SopPhase } from '@/types';
-
-function addDaysISO(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 function Chip(props: { label: string; active: boolean; onPress: () => void }) {
   const { palette } = useTheme();
@@ -151,6 +146,10 @@ const SopPlanScreen: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<SopPlan | null>(null);
+  const setPinned = useSopPlanStore((s) => s.setPinned);
+
+  const isExplicitDate =
+    withDate && /^\d{4}-\d{2}-\d{2}$/.test(plantingDate);
 
   const build = async () => {
     setError(null);
@@ -172,6 +171,7 @@ const SopPlanScreen: React.FC = () => {
         return;
       }
       setPlan(result);
+      setPinned(result, isExplicitDate ? plantingDate : null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -179,48 +179,33 @@ const SopPlanScreen: React.FC = () => {
     }
   };
 
-  const resolveBase = (): string | null => {
-    if (withDate && /^\d{4}-\d{2}-\d{2}$/.test(plantingDate)) return plantingDate;
-    const active = plan?.phases?.find((p) => p.active);
-    if (active) {
-      const mid = Math.round((active.hstStart + active.hstEnd) / 2);
-      return addDaysISO(todayISO(), -mid);
-    }
-    return null;
-  };
+  const resolveBase = (): string | null => planBaseDate(plan, isExplicitDate ? plantingDate : null);
 
   const windowOf = (phase: SopPhase): { start: string | null; end: string | null } => {
     const base = resolveBase();
     if (!base) return { start: null, end: null };
     return {
-      start: addDaysISO(base, phase.hstStart),
-      end: phase.hstEnd >= phase.hstStart ? addDaysISO(base, phase.hstEnd) : null,
+      start: addDays(base, phase.hstStart),
+      end: phase.hstEnd >= phase.hstStart ? addDays(base, phase.hstEnd) : null,
     };
   };
 
   const logPhase = async (phase: SopPhase) => {
+    if (!plan) return;
     const base = resolveBase();
+    const scheduled = planStepSchedule(plan, base).filter((e) => e.phase.id === phase.id);
     const today = todayISO();
-    const steps = phase.steps;
-    const inputs = steps.map((s, i) => {
-      const offset =
-        steps.length <= 1
-          ? phase.hstStart
-          : phase.hstStart + Math.round((i / (steps.length - 1)) * (phase.hstEnd - phase.hstStart));
-      const date = base ? addDaysISO(base, offset) : today;
-      const remindAt = date > today ? `${date}T07:00:00` : undefined;
-      return {
-        farmId: activeFarm?.id,
-        cropId: firstCrop?.id,
-        cropLabel: plan?.crop?.label,
-        activity: s.activity,
-        date,
-        remindAt,
-        doseText: phase.doseText ?? undefined,
-        note: `Rencana SOP ${plan?.crop?.label} — ${phase.label}`,
-        source: 'ai' as const,
-      };
-    });
+    const inputs = scheduled.map((e) => ({
+      farmId: activeFarm?.id,
+      cropId: firstCrop?.id,
+      cropLabel: plan.crop?.label,
+      activity: e.step.activity,
+      date: e.date,
+      remindAt: e.date > today ? `${e.date}T07:00:00` : undefined,
+      doseText: phase.doseText ?? undefined,
+      note: `Rencana SOP ${plan.crop?.label} — ${phase.label}`,
+      source: 'ai' as const,
+    }));
     for (const inp of inputs) await addActivity(inp);
     const from = inputs[0]?.date;
     const to = inputs[inputs.length - 1]?.date;

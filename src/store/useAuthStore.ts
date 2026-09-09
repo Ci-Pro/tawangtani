@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { User } from '@/types';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import { syncFarmsToServer } from '@/services/farmSync';
+import { useActivityStore } from '@/store/useActivityStore';
 
 interface AuthState {
   user: User | null;
@@ -49,6 +50,9 @@ export const useAuthStore = create<AuthState>()((set) => ({
           if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
             syncFarmsToServer().catch(() => {
               // sync diam-diam; user bisa sync manual lewat Profil
+            });
+            useActivityStore.getState().syncNow().catch(() => {
+              // aktivitas ditarik/didorong diam-diam saat login
             });
           }
         });

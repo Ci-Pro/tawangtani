@@ -94,6 +94,12 @@ export interface FarmActivity {
   note?: string;
   done: boolean;
   source: 'manual' | 'ai';
+  /** id di server bila sudah disinkronkan (farm_activities). */
+  serverId?: string;
+  /** false = belum terkirim ke server (kebagian sinkron offline-first). */
+  synced?: boolean;
+  /** tanda hapus lokal untuk diteruskan ke server saat sinkron. */
+  _deleted?: boolean;
 }
 
 export type HistoryType = 'fertilizer' | 'pesticide' | 'conversion' | 'grid';

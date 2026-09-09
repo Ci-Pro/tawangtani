@@ -126,6 +126,25 @@ const main = async () => {
     step('plantings: hapus', r.status === 200 || r.status === 204);
   }
 
+  // 7b. Aktivitas budidaya CRUD (sinkron lintas perangkat, butuh login)
+  r = await req('/api/activities');
+  step('activities: tanpa login ditolak', r.status === 401);
+  r = await req('/api/activities', {
+    method: 'POST',
+    token: jwt,
+    body: { activity: 'penyiraman', date: '2026-09-10', note: 'e2e', source: 'manual', cropLabel: 'Padi', done: false },
+  });
+  const aid = r.json?.activity?.id;
+  step('activities: buat aktivitas', r.status === 200 && !!aid && r.json?.activity?.activity === 'penyiraman', `id=${aid ?? '-'}`);
+  r = await req('/api/activities', { token: jwt });
+  step('activities: daftar milik pengguna', r.status === 200 && (r.json?.activities ?? []).some((a) => a.id === aid && a.crop_label === 'Padi'));
+  if (aid) {
+    r = await req(`/api/activities/${aid}`, { method: 'PATCH', token: jwt, body: { done: true } });
+    step('activities: tandai selesai', r.status === 200 && r.json?.ok === true);
+    r = await req(`/api/activities/${aid}`, { method: 'DELETE', token: jwt });
+    step('activities: hapus', r.status === 200 && r.json?.ok === true);
+  }
+
   // 8. Laporan harga petani
   r = await req('/api/market/prices?province=jawa%20timur&level=3');
   const jatimAll = (r.json?.prices ?? []).filter((p) => p.province === 'jawa timur').length;
