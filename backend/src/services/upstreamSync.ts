@@ -2,6 +2,7 @@ import { listMarketPrices, MarketPriceRow, upsertMarketPrices } from '../store/m
 import { writeSyncHealth } from '../store/syncHealth';
 import { sanitizePrice, displayUnitFor } from './priceSanity';
 import { snapshotToday } from './marketHistory';
+import { runKemendagSync } from './kemendagSync';
 
 /**
  * Sinkronisasi penuh harga dari Panel Harga Kementan (PIHPS).
@@ -250,7 +251,12 @@ export async function runUpstreamSync(): Promise<HarvestResult> {
         if (clean === null) continue;
         const key = `${p.commodity}|${p.level}`;
         const row = byKey.get(key);
-        if (row && row.price === clean) continue;
+        if (row && row.price === clean) {
+          // Harga tak berubah — tetap tandai hidup dengan menggeser updated_at
+          // agar dataAgeHours mencerminkan "terverifikasi baru-baru ini".
+          updates.push({ ...row, updated_at: nowIso });
+          continue;
+        }
         changed += 1;
         updates.push(
           row
@@ -288,9 +294,12 @@ export async function runUpstreamSync(): Promise<HarvestResult> {
     }
   });
 
+  const kemendag = await runKemendagSync();
+  errors.push(...kemendag.errors);
+
   const result: HarvestResult = {
     provinces: provinces.length,
-    rows,
+    rows: rows + kemendag.priceRows,
     changed,
     errors,
     durationMs: Date.now() - started,

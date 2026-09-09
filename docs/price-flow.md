@@ -6,7 +6,8 @@ Dokumen satu halaman: dari mana harga berasal, bagaimana diperbarui, dan ke mana
 
 | Sumber | Endpoint | Peran |
 | --- | --- | --- |
-| Panel Harga Kementan (PIHPS) | `app3.pertanian.go.id/panelharga/export_harian_excel.php` | Sumber utama harga per provinsi × 3 tingkat (1=Produsen, 2=Grosir, 3=Konsumen) |
+| Panel Harga Kementan (PIHPS) | `app3.pertanian.go.id/panelharga/export_harian_excel.php` | HTML resmi per provinsi × 3 tingkat (1=Produsen, 2=Grosir, 3=Konsumen); ±28 komoditas inti |
+| SP2KP Kemendag | `api-sp2kp.kemendag.go.id/report/api/average-price-public` | JSON resmi, terbuka dari cloud, harian; >50 komoditas + grade varian |
 | Laporan petani | `farmer_prices` (RLS, butuh login) | Sumber sekunder / koreksi harga bila resmi basi |
 
 ## 2. Alur penyegaran resmi (realtime ≈ 2×/hari)
@@ -14,12 +15,16 @@ Dokumen satu halaman: dari mana harga berasal, bagaimana diperbarui, dan ke mana
 ```
 Vercel cron "0 6,18 * * *"  ──▶  POST /api/market/sync-cron  (Bearer CRON_SECRET)
         │
-        └── runUpstreamSync()  ──▶  panen 38 provinsi × 3 tingkat (konkurensi 5, retry 3×)
-                                    1. sanitizePrice  (buang harga jelas abnormal)
-                                    2. banding dgn tabel market_prices  → prev_price + price
-                                    3. upsert market_prices  (PK: commodity,province,level)
-                                    4. snapshotToday(provinsi)  → market_price_history (idempoten per tanggal)
-                                    5. writeSyncHealth  → tabel sync_health (dashboard admin)
+        └── runUpstreamSync()
+             1. PIHPS: panen nasional + 38 provinsi × 3 tingkat (konkurensi 5, retry 3×)
+                   sanitize → banding → prev_price/price → upsert market_prices
+                   harga tak berubah tetap di-"touch" (updated_at) agar freshness jujur
+             2. SP2KP: table harga rata-rata per kabupaten/provinsi (page kecil 400 utk
+                   tahan jaringan lintas benua) → pilih varian prioritas → upsert + riwayat
+                   komoditas tanpa baris nasional → nasional = median harga semenjak
+                   provinsi, bila baris nasional basi/absent
+             3. snapshotToday(provinsi) → market_price_history (idempoten per tanggal)
+             4. writeSyncHealth → tabel sync_health (dashboard admin)
 ```
 
 Cadangan: `POST /api/market/sync` (token admin, manual).
@@ -63,7 +68,7 @@ dari laporan petani yang terverifikasi — tidak lagi "terisolasi" dari laporan.
 
 - `GET /api/market/prices` kini mengembalikan `dataAgeHours` per baris.
 - Layar Harga menampilkan badge bila data >24 jam ("belum diperbarui — coba tarik refresh").
-- Sumber tiap harga terlihat: `upstream:kemtan-panelharga` vs `farmer:verified`.
+- Sumber tiap harga terlihat: `upstream:kemtan-panelharga`, `sp2kp:kemendag-api`, atau `farmer:verified`.
 - Cache perangkat offline diberi TTL 60 menit agar tidak menampilkan data basi diam-diam.
 - `market_price_history` unik per `(commodity, province, level, date)` — backfill diperbaiki agar
   tidak crash saat `level` ikut konflik.
