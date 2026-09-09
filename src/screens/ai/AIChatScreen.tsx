@@ -58,6 +58,7 @@ const AIChatScreen: React.FC = () => {
   const deleteSession = useChatStore((s) => s.deleteSession);
   const addUser = useChatStore((s) => s.addUser);
   const addAssistant = useChatStore((s) => s.addAssistant);
+  const activeId = useChatStore((s) => s.activeId);
   const backendUrl = useSettingsStore((s) => s.backendUrl);
   const coords = useSettingsStore((s) => s.coords);
   const locationName = useSettingsStore((s) => s.locationName);
@@ -132,7 +133,7 @@ const AIChatScreen: React.FC = () => {
           diagnosisMode && text
             ? `[MODE DIAGNOSIS] ${text}`
             : text;
-        const turn = await runAgent(messages, finalText, buildContext(), backendUrl);
+        const turn = await runAgent(messages, finalText, buildContext(), backendUrl, activeId ?? undefined);
         addAssistant(turn.reply, turn.toolsUsed.join(', ') || undefined, turn.actions);
       }
     } catch {

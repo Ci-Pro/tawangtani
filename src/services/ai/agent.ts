@@ -31,12 +31,13 @@ export async function runAgent(
   history: ChatMessage[],
   userText: string,
   ctx: ToolContext,
-  backendUrl?: string
+  backendUrl?: string,
+  sessionId?: string
 ): Promise<AgentTurn> {
   const url = getBackendUrl(backendUrl);
   if (url) {
     try {
-      return await runBackendAgent(url, history, userText, ctx);
+      return await runBackendAgent(url, history, userText, ctx, sessionId);
     } catch {
       return runOfflineAgent(userText, ctx);
     }
@@ -87,7 +88,8 @@ async function runBackendAgent(
   url: string,
   history: ChatMessage[],
   userText: string,
-  ctx: ToolContext
+  ctx: ToolContext,
+  sessionId?: string
 ): Promise<AgentTurn> {
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -103,6 +105,7 @@ async function runBackendAgent(
         messages,
         tools: TOOLS,
         context: ctx,
+        sessionId,
       },
       90_000
     );

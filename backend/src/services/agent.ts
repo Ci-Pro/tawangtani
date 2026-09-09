@@ -1,8 +1,9 @@
-import { ChatMessageIn, ToolCallOut, ToolContext } from '../types';
+import { Annotation, StateGraph, START, END, MemorySaver } from '@langchain/langgraph';
+import { ChatMessageIn, ToolContext } from '../types';
 import { chatCompletion, ORMessage, CompletionResult } from './openrouter';
 import { PROMPT_TOOL_DIRECTIVE, TOOL_SCHEMAS } from '../tools/schemas';
 import { executeTool } from '../tools/executors';
-import { budgetMessages, estimateTokens } from './tokenBudget';
+import { budgetMessages } from './tokenBudget';
 
 const MAX_ITERATIONS = 7;
 
@@ -10,6 +11,10 @@ const MAX_ITERATIONS = 7;
 const MAX_TOOL_RESULT_CHARS = 3000;
 /** Anggaran input perkiraan token per putaran lengkap. */
 const MAX_INPUT_TOKENS = 24000;
+/** Refleksi dinonaktifkan bila anggaran gabungan sudah mendekati jendela model. */
+const MAX_REFLECT_TOKENS = 16000;
+/** AGENT_REFLECT=0 untuk mematikan langkah refleksi (hemat kuota/latensi). */
+const REFLECT_ENABLED = process.env.AGENT_REFLECT !== '0';
 
 const SYSTEM_PROMPT = `Anda adalah Tani AI, agronomis digital berbahasa Indonesia di aplikasi TAWANGTANI yang membantu petani kecil memaksimalkan hasil panen.
 
@@ -28,6 +33,18 @@ const SYSTEM_PROMPT = `Anda adalah Tani AI, agronomis digital berbahasa Indonesi
 5. Selalu ingatkan membaca label resmi sebelum aplikasi pestisida/pupuk, patuhi interval pra-panen.
 6. Bahasa Indonesia sederhana yang dipahami petani; angka dosis jelas; hindari istilah asing tanpa penjelasan.
 7. Prioritaskan pendekatan PHT (budaya teknis dulu, kimia terakhir bila perlu) dan keselamatan pengguna.`;
+
+/** Umpan balik verifikasi sebelum jawaban final untuk pertanyaan multi-tool. */
+const REFLECT_PROMPT = `Tinjau ulang jawaban Anda yang akan dikirim ke petani di bawah.
+Periksa:
+(a) Semua angka/dosis/merek harus berasal dari data tool yang diberikan — JANGAN menambah data yang tidak ada.
+(b) Bila jawaban memakai search_knowledge/product_search, pastikan baris terakhir "Sumber: ..." tetap ada dan sesuai urutan.
+(c) Bila ada klaim yang kurang didukung, perbaiki dan tulis ulang singkat dalam Bahasa Indonesia yang sederhana.
+(d) Bila jawaban sudah tepat, balas dengan jawaban yang SAMA persis tanpa perubahan.
+Balas HANYA versi final jawaban — tanpa awalan, tanpa komentar.
+
+JAWABAN SEBELUMNYA:
+{ANSWER}`;
 
 function tryParseLoose(text: string): { name?: string; parameters?: Record<string, unknown>; arguments?: Record<string, unknown> } | null {
   const cleaned = text.replace(/\[\s*\[/g, '[').replace(/\]\s*\]/g, ']');
@@ -122,7 +139,7 @@ export function parseToolArgs(raw?: string): Record<string, unknown> {
   return {};
 }
 
-function parseDirective(text: string): ToolCallOut | null {
+function parseDirective(text: string): { name: string; arguments: Record<string, unknown> } | null {
   if (!text) return null;
   const m = text.match(/\{\s*"tool"\s*:\s*"[^"]+"[\s\S]*?\}/);
   if (m) {
@@ -148,7 +165,7 @@ function parseDirective(text: string): ToolCallOut | null {
  * (bukan melalui tool_calls native). Deteksi seluruh konten sebagai envelope tool
  * {tool|name, arguments} agar dilewatkan ke eksekutor alih-alih bocor ke jawaban.
  */
-function parseWholeEnvelope(text: string | null | undefined): ToolCallOut | null {
+function parseWholeEnvelope(text: string | null | undefined): { name: string; arguments: Record<string, unknown> } | null {
   const trimmed = (text ?? '').trim();
   if (!trimmed.startsWith('{')) return null;
   try {
@@ -170,6 +187,9 @@ function parseWholeEnvelope(text: string | null | undefined): ToolCallOut | null
   }
 }
 
+/** Indikasi model berniat memakai tool namun menuliskannya sebagai narasi. */
+const RETRY_HINT = /(\bakan\b|\bcek\b|\bcari informasi\b|\bmemeriksa\b|tunggu|sebentar)/i;
+
 function normalizeMessages(input: ChatMessageIn[]): ORMessage[] {
   const out: ORMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }];
   for (const m of input) {
@@ -186,9 +206,241 @@ function normalizeMessages(input: ChatMessageIn[]): ORMessage[] {
   return out;
 }
 
+// ---------- Grafik agen LangGraph ----------
+
+interface GraphToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+interface GraphLastOutput {
+  content: string;
+  toolCalls: GraphToolCall[];
+  model: string;
+  usage: CompletionResult['usage'];
+}
+
+const StateAnnotation = Annotation.Root({
+  /** Buffer pesan kerja (konteks input + langkah tool). */
+  messages: Annotation<ORMessage[]>({ reducer: (_a, b) => b }),
+  /** Output model terbaru; null bila belum ada atau setelah tool dieksekusi. */
+  lastOutput: Annotation<GraphLastOutput | null>({ reducer: (_a, b) => b }),
+  iterations: Annotation<number>({ reducer: (a, b) => a + b }),
+  toolCallsUsed: Annotation<string[]>({ reducer: (a, b) => a.concat(b) }),
+  nativeToolsBroken: Annotation<boolean>({ reducer: (_a, b) => b }),
+  /** True bila model menulis niat tool sebagai narasi → alihkan ke mode directive. */
+  hint: Annotation<boolean>({ reducer: (_a, b) => b }),
+  final: Annotation<string | null>({ reducer: (_a, b) => b }),
+  reflectTaken: Annotation<boolean>({ reducer: (_a, b) => b }),
+  model: Annotation<string>({ reducer: (a, b) => a || b }),
+  usage: Annotation<CompletionResult['usage']>({
+    reducer: (a, b) => ({
+      promptTokens: a.promptTokens + b.promptTokens,
+      completionTokens: a.completionTokens + b.completionTokens,
+      totalTokens: a.totalTokens + b.totalTokens,
+    }),
+  }),
+  ctx: Annotation<ToolContext>({ reducer: (_a, b) => b }),
+});
+
+type AgentState = typeof StateAnnotation.State;
+type PartialAgentState = Partial<typeof StateAnnotation.State>;
+
+async function agentNode(state: AgentState): Promise<PartialAgentState> {
+  const nextIter = state.iterations + 1;
+  const convo = [...state.messages];
+  if (nextIter === MAX_ITERATIONS) {
+    convo.push({
+      role: 'system',
+      content:
+        'Iterasi terakhir: GUNAKAN data tool yang sudah didapat dan JAWAB pertanyaan pengguna sekarang. Dilarang memanggil tool lagi.',
+    });
+  }
+
+  // P0: jaga konteks agar tidak melampaui jendela kosong model fallback.
+  const budgeted = budgetMessages(convo, {
+    systemPrompt: SYSTEM_PROMPT,
+    maxInputTokens: MAX_INPUT_TOKENS,
+    maxMessageChars: 6000,
+  });
+
+  const first = state.iterations === 0;
+  const native = state.nativeToolsBroken;
+  let result: CompletionResult;
+  try {
+    result = await chatCompletion(
+      budgeted,
+      native ? undefined : TOOL_SCHEMAS,
+      undefined,
+      native ? 'auto' : first ? 'required' : 'auto'
+    );
+  } catch (err) {
+    // P2: jika tool native bermasalah di giliran pertama, alihkan ke mode directive berbasis prompt.
+    if (!native && first) {
+      return {
+        nativeToolsBroken: true,
+        hint: false,
+        messages: [...state.messages, { role: 'system', content: PROMPT_TOOL_DIRECTIVE }],
+        iterations: 1,
+      };
+    }
+    throw err;
+  }
+
+  console.log(
+    `[agent] it=${nextIter} tools=[${result.toolCalls.map((t) => resolveToolName(t.name)).join(',')}] tokens=${result.usage.promptTokens}+${result.usage.completionTokens} model=${result.model}`
+  );
+
+  const toolCalls: GraphToolCall[] = result.toolCalls.map((tc) => ({
+    id: tc.id,
+    name: tc.name,
+    arguments: tc.arguments,
+  }));
+
+  if (toolCalls.length === 0) {
+    const directive = parseDirective(result.content) ?? parseWholeEnvelope(result.content);
+    if (directive) {
+      toolCalls.push({
+        id: `dir_${nextIter}_${toolCalls.length}`,
+        name: directive.name,
+        arguments: JSON.stringify(directive.arguments ?? {}),
+      });
+    } else if (!native && RETRY_HINT.test(result.content || '')) {
+      return {
+        nativeToolsBroken: true,
+        hint: true,
+        messages: [...state.messages, { role: 'system', content: PROMPT_TOOL_DIRECTIVE }],
+        iterations: 1,
+      };
+    }
+  }
+
+  if (toolCalls.length > 0) {
+    for (const t of toolCalls) if (resolveToolName(t.name) !== t.name) console.log(`[agent] nama tool dikoreksi: "${t.name}" -> "${resolveToolName(t.name)}"`);
+    return {
+      messages: [
+        ...state.messages,
+        {
+          role: 'assistant',
+          content: result.content || null,
+          tool_calls: toolCalls.map((tc) => ({
+            id: tc.id,
+            type: 'function' as const,
+            function: { name: tc.name, arguments: tc.arguments },
+          })),
+        },
+      ],
+      lastOutput: { content: result.content, toolCalls, model: result.model, usage: result.usage },
+      iterations: 1,
+      model: result.model,
+      usage: result.usage,
+      hint: false,
+      nativeToolsBroken: native,
+      toolCallsUsed: toolCalls.map((tc) => resolveToolName(tc.name)),
+    };
+  }
+
+  return {
+    lastOutput: { content: result.content, toolCalls: [], model: result.model, usage: result.usage },
+    iterations: 1,
+    model: result.model,
+    usage: result.usage,
+    final: result.content.trim(),
+    hint: false,
+    nativeToolsBroken: native,
+  };
+}
+
+async function toolsNode(state: AgentState): Promise<PartialAgentState> {
+  const last = state.lastOutput;
+  if (!last || last.toolCalls.length === 0) return { messages: state.messages, lastOutput: null };
+  const out: ORMessage[] = [...state.messages];
+  for (const tc of last.toolCalls) {
+    const toolName = resolveToolName(tc.name);
+    const args = parseToolArgs(tc.arguments);
+    let toolText: string;
+    try {
+      const toolResult = await executeTool(toolName, args, state.ctx);
+      toolText = JSON.stringify(toolResult);
+      if (toolText.length > MAX_TOOL_RESULT_CHARS) toolText = toolText.slice(0, MAX_TOOL_RESULT_CHARS);
+    } catch (err) {
+      console.log(`[agent] tool error ${toolName}: ${(err as Error).message}`);
+      toolText = JSON.stringify({
+        summary: `[TOOL_ERROR] ${(err as Error).message}. Perbaiki argumen dan coba lagi.`,
+      });
+    }
+    out.push({ role: 'tool', tool_call_id: tc.id, name: toolName, content: toolText });
+  }
+  return { messages: out, lastOutput: null };
+}
+
+function canReflect(state: AgentState): boolean {
+  if (!REFLECT_ENABLED) return false;
+  if (state.nativeToolsBroken) return false;
+  if (state.reflectTaken) return false;
+  if (state.iterations >= MAX_ITERATIONS) return false;
+  if (!state.lastOutput || state.lastOutput.toolCalls.length > 0) return false;
+  if (state.toolCallsUsed.length < 2) return false;
+  if (state.usage.totalTokens >= MAX_REFLECT_TOKENS) return false;
+  return true;
+}
+
+/**
+ * Node refleksi: verifikasi jawaban multi-tool sebelum dikirim agar klaim tidak
+ * menyimpang dari data tool (tambahan kualitas — opsional via AGENT_REFLECT=0).
+ */
+async function reflectNode(state: AgentState): Promise<PartialAgentState> {
+  const base = state.final ?? state.lastOutput?.content ?? '';
+  const prompt = REFLECT_PROMPT.replace('{ANSWER}', base);
+  try {
+    const review = budgetMessages([...state.messages, { role: 'user', content: prompt }], {
+      systemPrompt: SYSTEM_PROMPT,
+      maxInputTokens: MAX_INPUT_TOKENS,
+      maxMessageChars: 6000,
+    });
+    const r = await chatCompletion(review, undefined, undefined, 'auto', { temperature: 0.2, maxTokens: 1600 });
+    console.log(`[agent] refleksi model=${r.model} tokens=${r.usage.totalTokens}`);
+    return {
+      final: r.content.trim(),
+      reflectTaken: true,
+      model: r.model,
+      usage: r.usage,
+    };
+  } catch (err) {
+    console.log(`[agent] refleksi gagal: ${(err as Error).message}`);
+    return { final: base, reflectTaken: true };
+  }
+}
+
+function routeAfterAgent(state: AgentState): 'agent' | 'tools' | 'reflect' | typeof END {
+  if (state.hint) return 'agent';
+  if (!state.lastOutput) return 'agent';
+  if (state.lastOutput.toolCalls.length > 0) {
+    return state.iterations < MAX_ITERATIONS ? 'tools' : END;
+  }
+  if (state.reflectTaken) return END;
+  if (canReflect(state)) return 'reflect';
+  return END;
+}
+
+const agentGraph = new StateGraph(StateAnnotation)
+  .addNode('agent', agentNode)
+  .addNode('tools', toolsNode)
+  .addNode('reflect', reflectNode)
+  .addEdge(START, 'agent')
+  .addConditionalEdges('agent', routeAfterAgent)
+  .addEdge('tools', 'agent')
+  .addEdge('reflect', END)
+  .compile({ checkpointer: new MemorySaver() });
+
+const APOLOGY =
+  'Maaf, saya belum bisa menyelesaikan permintaan ini. Silakan coba ulang dengan pertanyaan yang lebih spesifik.';
+
 export async function runAgent(
   inputMessages: ChatMessageIn[],
-  ctx: ToolContext
+  ctx: ToolContext,
+  opts?: { sessionId?: string }
 ): Promise<{
   reply: string;
   iterations: number;
@@ -197,140 +449,31 @@ export async function runAgent(
   usage: { promptTokens: number; completionTokens: number; totalTokens: number };
 }> {
   const convo = normalizeMessages(inputMessages);
-  let nativeToolsBroken = false;
-  let iterations = 0;
-  const toolCallsUsed: string[] = [];
-  let model = '';
-  const usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
-
-  while (iterations < MAX_ITERATIONS) {
-    iterations += 1;
-    if (iterations === MAX_ITERATIONS) {
-      convo.push({
-        role: 'system',
-        content:
-          'Iterasi terakhir: GUNAKAN data tool yang sudah didapat dan JAWAB pertanyaan pengguna sekarang. Dilarang memanggil tool lagi.',
-      });
-    }
-
-    // P1: jaga konteks agar tidak melampaui jendela kosong model fallback.
-    const budgeted = budgetMessages(convo, {
-      systemPrompt: SYSTEM_PROMPT,
-      maxInputTokens: MAX_INPUT_TOKENS,
-      maxMessageChars: 6000,
-    });
-
-    let result: CompletionResult;
-    try {
-      result = await chatCompletion(
-        budgeted,
-        nativeToolsBroken ? undefined : TOOL_SCHEMAS,
-        undefined,
-        nativeToolsBroken ? 'auto' : iterations === 1 ? 'required' : 'auto'
-      );
-    } catch (err) {
-      if (!nativeToolsBroken && iterations === 1) {
-        nativeToolsBroken = true;
-        convo.push({ role: 'system', content: PROMPT_TOOL_DIRECTIVE });
-        iterations -= 1;
-        continue;
-      }
-      throw err;
-    }
-    if (!model) model = result.model;
-    usage.promptTokens += result.usage.promptTokens;
-    usage.completionTokens += result.usage.completionTokens;
-    usage.totalTokens += result.usage.totalTokens;
-
-    console.log(
-      `[agent] it=${iterations} tools=[${result.toolCalls.map((t) => t.name).join(',')}] tokens=${usage.promptTokens}+${usage.completionTokens} model=${result.model}`
-    );
-
-    for (const tc of result.toolCalls) {
-      const fixed = resolveToolName(tc.name);
-      toolCallsUsed.push(fixed);
-      if (fixed !== tc.name) console.log(`[agent] nama tool dikoreksi: "${tc.name}" -> "${fixed}"`);
-    }
-    if (result.toolCalls.length > 0) {
-      convo.push({
-        role: 'assistant',
-        content: result.content || null,
-        tool_calls: result.toolCalls.map((tc) => ({
-          id: tc.id,
-          type: 'function' as const,
-          function: { name: tc.name, arguments: tc.arguments },
-          ...(tc.extraContent !== undefined ? { extra_content: tc.extraContent } : {}),
-        })),
-      });
-      for (const tc of result.toolCalls) {
-        const args = parseToolArgs(tc.arguments);
-        const toolName = resolveToolName(tc.name);
-        if (toolName !== tc.name) {
-          console.log(`[agent] nama tool dikoreksi: "${tc.name}" -> "${toolName}"`);
-        }
-        // P4: tool error dikembalikan ke model untuk percobaan ulang, bukan menggagalkan agen.
-        let toolText: string;
-        try {
-          const toolResult = await executeTool(toolName, args, ctx);
-          toolText = JSON.stringify(toolResult);
-          if (toolText.length > MAX_TOOL_RESULT_CHARS) toolText = toolText.slice(0, MAX_TOOL_RESULT_CHARS);
-        } catch (err) {
-          console.log(`[agent] tool error ${toolName}: ${(err as Error).message}`);
-          toolText = JSON.stringify({
-            summary: `[TOOL_ERROR] ${(err as Error).message}. Perbaiki argumen dan coba lagi.`,
-          });
-        }
-        convo.push({
-          role: 'tool',
-          tool_call_id: tc.id,
-          name: toolName,
-          content: toolText,
-        });
-      }
-      continue;
-    }
-
-    const directive = parseDirective(result.content) ?? parseWholeEnvelope(result.content);
-    if (directive) {
-      const toolName = resolveToolName(directive.name);
-      let toolText: string;
-      try {
-        const toolResult = await executeTool(toolName, directive.arguments, ctx);
-        toolText = JSON.stringify(toolResult);
-        if (toolText.length > MAX_TOOL_RESULT_CHARS) toolText = toolText.slice(0, MAX_TOOL_RESULT_CHARS);
-      } catch (err) {
-        toolText = JSON.stringify({ summary: `[TOOL_ERROR] ${(err as Error).message} Perbaiki argumen dan coba lagi.` });
-      }
-      convo.push({ role: 'assistant', content: result.content });
-      convo.push({
-        role: 'user',
-        content: `[TOOL_RESULT ${toolName}] ${toolText}`,
-      });
-      continue;
-    }
-
-    // Model berniat memakai tool tetapi tidak memanggilnya (teks "saya akan cek...")
-    // → alihkan ke mode directive berbasis prompt.
-    if (
-      !result.toolCalls.length &&
-      !directive &&
-      !nativeToolsBroken &&
-      /(\bakan\b|\bcek\b|\bcari informasi\b|\bmemeriksa\b|tunggu|sebentar)/i.test(result.content || '')
-    ) {
-      nativeToolsBroken = true;
-      convo.push({ role: 'system', content: PROMPT_TOOL_DIRECTIVE });
-      continue;
-    }
-
-    return { reply: result.content.trim(), iterations, toolCallsUsed, model: result.model, usage };
-  }
-
+  // thread_id unik per permintaan (langkah berikutnya bisa memakai per-session
+  // bila diinginkan; memori lintas pertanyaan kini tetap lewat riwayat DB yang
+  // diputar ulang di input).
+  const threadId = `${opts?.sessionId ?? 'anon'}:${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const state = await agentGraph.invoke(
+    {
+      messages: convo,
+      ctx,
+      lastOutput: null,
+      iterations: 0,
+      toolCallsUsed: [],
+      nativeToolsBroken: false,
+      hint: false,
+      final: null,
+      reflectTaken: false,
+      model: '',
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+    },
+    { configurable: { thread_id: threadId } }
+  );
   return {
-    reply:
-      'Maaf, saya belum bisa menyelesaikan permintaan ini. Silakan coba ulang dengan pertanyaan yang lebih spesifik.',
-    iterations,
-    toolCallsUsed,
-    model,
-    usage,
+    reply: state.final ?? APOLOGY,
+    iterations: state.iterations,
+    toolCallsUsed: state.toolCallsUsed,
+    model: state.model,
+    usage: state.usage,
   };
 }

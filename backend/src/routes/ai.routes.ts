@@ -61,9 +61,10 @@ aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
       res.status(503).json({ error: 'Server belum dikonfigurasi OPENROUTER_API_KEY' });
       return;
     }
-    const { messages, context } = req.body as {
+    const { messages, context, sessionId } = req.body as {
       messages?: ChatMessageIn[];
       context?: ToolContext;
+      sessionId?: string;
     };
     if (!Array.isArray(messages) || messages.length === 0) {
       res.status(400).json({ error: 'messages wajib berupa array tidak kosong' });
@@ -81,7 +82,7 @@ aiRouter.post('/chat', aiLimiter, async (req: Request, res: Response) => {
     }
     const started = Date.now();
     const ctx: ToolContext = { ...(context ?? {}), ...(sbUser?.id ? { userId: sbUser.id } : {}) };
-    const { reply, iterations, model, usage } = await runAgent(messages, ctx);
+    const { reply, iterations, model, usage } = await runAgent(messages, ctx, { sessionId });
     console.log(`[ai/chat] iter=${iterations} ms=${Date.now() - started} model=${model}`);
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     logAiQuery({
