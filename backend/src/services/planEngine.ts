@@ -85,6 +85,10 @@ export const SUPPORTED_CROPS: { slug: string; label: string }[] = [
   { slug: 'cabai', label: 'Cabai' },
   { slug: 'bawang_merah', label: 'Bawang Merah' },
   { slug: 'tomat', label: 'Tomat' },
+  { slug: 'kedelai', label: 'Kedelai' },
+  { slug: 'kentang', label: 'Kentang' },
+  { slug: 'terong', label: 'Terong' },
+  { slug: 'kacang_tanah', label: 'Kacang Tanah' },
 ];
 
 const CROP_ALIASES: Record<string, string> = {
@@ -92,6 +96,7 @@ const CROP_ALIASES: Record<string, string> = {
   beras: 'padi',
   gabah: 'padi',
   jagung: 'jagung',
+  janggel: 'jagung',
   cabai: 'cabai',
   cabe: 'cabai',
   cabai_merah: 'cabai',
@@ -99,6 +104,13 @@ const CROP_ALIASES: Record<string, string> = {
   bawang: 'bawang_merah',
   bawangmerah: 'bawang_merah',
   tomat: 'tomat',
+  kedelai: 'kedelai',
+  kacang_kedelai: 'kedelai',
+  kentang: 'kentang',
+  terong: 'terong',
+  terung: 'terong',
+  kacang_tanah: 'kacang_tanah',
+  kacang: 'kacang_tanah',
 };
 
 export function normalizeCrop(raw: string): string | null {
@@ -392,6 +404,223 @@ export const CROP_SCHEDULES: Record<string, { label: string; phases: SchedulePha
         steps: [
           { activity: 'panen', title: 'Perawatan & panen lanjut', desc: 'Lanjutkan panen; periksa percabangan dan kerusakan buah.' },
           { activity: 'lainnya', title: 'Pascapanen', desc: 'Sortasi, grading, dan penanganan ringkas agar kualitas terjaga.' },
+        ],
+      },
+    ],
+  },
+
+  kedelai: {
+    label: 'Kedelai',
+    phases: [
+      {
+        stage: 'vegetatif',
+        label: 'Pertumbuhan Vegetatif (0–30 HST)',
+        hstStart: 0,
+        hstEnd: 30,
+        topic: 'vegetatif',
+        steps: [
+          { activity: 'penyiraman', title: 'Pengairan awal tanam', desc: 'Pastikan kelembapan tanah cukup untuk perkecambahan.' },
+          { activity: 'pemupukan', title: 'Pemupukan dasar', desc: 'Pupuk dasar + penyemprotan Rhizobium sesuai rekomendasi setempat.' },
+          { activity: 'penyiangan', title: 'Penyiangan gulma', desc: 'Kontrol gulma awal agar tidak merebut hara.' },
+        ],
+      },
+      {
+        stage: 'generatif',
+        label: 'Generatif / Pembentukan Polong (31–55 HST)',
+        hstStart: 31,
+        hstEnd: 55,
+        topic: 'generatif',
+        steps: [
+          { activity: 'pemupukan', title: 'Pemupukan penunjang generatif', desc: 'Kurangi nitrogen; dukung pembentukan polong.' },
+          { activity: 'penyemprotan', title: 'Pantau hama polong', desc: 'Amati penggerek polong dan pengisap polong; kendalikan bila ambang terlewati.' },
+        ],
+      },
+      {
+        stage: 'pematangan',
+        label: 'Pematangan (56–70 HST)',
+        hstStart: 56,
+        hstEnd: 70,
+        topic: 'pematangan',
+        steps: [
+          { activity: 'penyemprotan', title: 'Hentikan semprot sesuai label', desc: 'Patuhi interval pra-panen pestisida.' },
+          { activity: 'lainnya', title: 'Pantau pemasakan polong', desc: 'Polong mulai mengering; siapkan waktu panen.' },
+        ],
+      },
+      {
+        stage: 'panen',
+        label: 'Panen (71–85 HST)',
+        hstStart: 71,
+        hstEnd: 85,
+        topic: 'panen',
+        steps: [
+          { activity: 'panen', title: 'Panen polong matang kering', desc: 'Panen saat ±80% polong kering; lakukan pagi hari.' },
+          { activity: 'lainnya', title: 'Perontokan & pengeringan', desc: 'Rontokkan dan keringkan biji sebelum disimpan/dijual.' },
+        ],
+      },
+    ],
+  },
+
+  kentang: {
+    label: 'Kentang',
+    phases: [
+      {
+        stage: 'vegetatif',
+        label: 'Pertumbuhan Vegetatif (0–30 HST)',
+        hstStart: 0,
+        hstEnd: 30,
+        topic: 'vegetatif',
+        steps: [
+          { activity: 'penyiraman', title: 'Penyiraman teratur', desc: 'Jaga kelembapan tanah agar umbi awal terbentuk baik.' },
+          { activity: 'pemupukan', title: 'Pemupukan dasar & susulan', desc: 'Pupuk sesuai rekomendasi; imbangi nitrogen dan kalium.' },
+          { activity: 'lainnya', title: 'Pembumbunan awal', desc: 'Naikkan tanah di sekitar batang untuk ruang umbi.' },
+        ],
+      },
+      {
+        stage: 'generatif',
+        label: 'Pembentukan Umbi (31–55 HST)',
+        hstStart: 31,
+        hstEnd: 55,
+        topic: 'generatif',
+        steps: [
+          { activity: 'pemupukan', title: 'Pemupukan penunjang umbi', desc: 'Tingkatkan kalium; kurangi nitrogen menjelang akhir.' },
+          { activity: 'penyemprotan', title: 'Cegah & kendalikan penyakit', desc: 'Pantau Phytophthora/layu dan OPT lain; semprot bila perlu.' },
+          { activity: 'penyiraman', title: 'Pengairan teratur', desc: 'Hindari stres air yang memicu umbi pecah.' },
+        ],
+      },
+      {
+        stage: 'pematangan',
+        label: 'Pematangan (56–75 HST)',
+        hstStart: 56,
+        hstEnd: 75,
+        topic: 'pematangan',
+        steps: [
+          { activity: 'penyiraman', title: 'Kurangi pengairan', desc: 'Biarkan kulit umbi mengeras menjelang panen.' },
+          { activity: 'lainnya', title: 'Persiapan panen', desc: 'Siapkan alat dan tempat pengumpulan umbi.' },
+        ],
+      },
+      {
+        stage: 'panen',
+        label: 'Panen (76–90 HST)',
+        hstStart: 76,
+        hstEnd: 90,
+        topic: 'panen',
+        steps: [
+          { activity: 'panen', title: 'Panen umbi matang', desc: 'Gali saat daun mulai menguning; hindari melukai umbi.' },
+          { activity: 'lainnya', title: 'Curing & penyimpanan', desc: 'Pelapisan kulit (curing) dan simpan di tempat gelap-berventilasi.' },
+        ],
+      },
+    ],
+  },
+
+  terong: {
+    label: 'Terong',
+    phases: [
+      {
+        stage: 'semai',
+        label: 'Persemaian & Pindah Tanam (0–30 HST)',
+        hstStart: 0,
+        hstEnd: 30,
+        topic: 'semai',
+        steps: [
+          { activity: 'penyiraman', title: 'Penyiraman semaian', desc: 'Jaga media semai lembap, jangan becek.' },
+          { activity: 'tanam', title: 'Pindah tanam', desc: 'Pindahkan bibit sehat ke lahan saat ±4 minggu semai.' },
+          { activity: 'pemupukan', title: 'Pupuk dasar', desc: 'Pupuk dasar pada lubang tanam sesuai rekomendasi setempat.' },
+        ],
+      },
+      {
+        stage: 'vegetatif',
+        label: 'Pertumbuhan Vegetatif (31–50 HST)',
+        hstStart: 31,
+        hstEnd: 50,
+        topic: 'vegetatif',
+        steps: [
+          { activity: 'penyiraman', title: 'Penyiraman rutin', desc: 'Jaga kelembapan; hindari penampungan air berlebih.' },
+          { activity: 'lainnya', title: 'Mulsa & ajir', desc: 'Pasang mulsa dan ajir agar buah tidak menyentuh tanah.' },
+          { activity: 'pemupukan', title: 'Pemupukan susulan', desc: 'Dukung pertumbuhan cabang sesuai rekomendasi.' },
+        ],
+      },
+      {
+        stage: 'generatif',
+        label: 'Generatif / Bunga & Buah (51–85 HST)',
+        hstStart: 51,
+        hstEnd: 85,
+        topic: 'generatif',
+        steps: [
+          { activity: 'pemupukan', title: 'Pemupukan penunjang buah', desc: 'Pastikan kalium cukup untuk buah berkualitas.' },
+          { activity: 'penyemprotan', title: 'Kendali hama buah & daun', desc: 'Amati keong, kutu, dan ulat buah; kendalikan bila perlu.' },
+        ],
+      },
+      {
+        stage: 'pematangan',
+        label: 'Pematangan & Panen I (86–100 HST)',
+        hstStart: 86,
+        hstEnd: 100,
+        topic: 'pematangan',
+        steps: [
+          { activity: 'panen', title: 'Panen bertahap', desc: 'Petik buah pada kematangan optimal, biasanya 3–5 hari sekali.' },
+          { activity: 'penyemprotan', title: 'Interval pra-panen', desc: 'Patuhi interval pra-panen pestisida dari label.' },
+        ],
+      },
+      {
+        stage: 'panen',
+        label: 'Panen Lanjut (101–120 HST)',
+        hstStart: 101,
+        hstEnd: 120,
+        topic: 'panen',
+        steps: [
+          { activity: 'panen', title: 'Perawatan & panen lanjut', desc: 'Lanjutkan panen bertahap; pangkas cabang tidak produktif.' },
+          { activity: 'lainnya', title: 'Pascapanen', desc: 'Sortasi, grading, dan pengemasan untuk nilai jual lebih baik.' },
+        ],
+      },
+    ],
+  },
+
+  kacang_tanah: {
+    label: 'Kacang Tanah',
+    phases: [
+      {
+        stage: 'vegetatif',
+        label: 'Pertumbuhan Vegetatif (0–40 HST)',
+        hstStart: 0,
+        hstEnd: 40,
+        topic: 'vegetatif',
+        steps: [
+          { activity: 'penyiraman', title: 'Pengairan awal', desc: 'Jaga kelembapan tanah untuk perkecambahan seragam.' },
+          { activity: 'pemupukan', title: 'Pemupukan dasar', desc: 'Pupuk dasar sesuai rekomendasi; hindari nitrogen berlebih.' },
+          { activity: 'penyiangan', title: 'Penyiangan gulma', desc: 'Kontrol gulma awal agar tidak bersaing.' },
+        ],
+      },
+      {
+        stage: 'generatif',
+        label: 'Pembentukan Polong (41–60 HST)',
+        hstStart: 41,
+        hstEnd: 60,
+        topic: 'generatif',
+        steps: [
+          { activity: 'penyiraman', title: 'Pengairan membantu ginofor', desc: 'Jaga kelembapan agar cabang muda (ginofor) masuk tanah.' },
+          { activity: 'penyemprotan', title: 'Kendali penggerek polong', desc: 'Amati serangan hama polong; kendalikan bila ambang terlewati.' },
+        ],
+      },
+      {
+        stage: 'pematangan',
+        label: 'Pematangan (61–75 HST)',
+        hstStart: 61,
+        hstEnd: 75,
+        topic: 'pematangan',
+        steps: [
+          { activity: 'penyiraman', title: 'Kurangi pengairan', desc: 'Biarkan polong matang seragam di tanah.' },
+          { activity: 'lainnya', title: 'Pantau kematangan polong', desc: 'Periksa polong pada beberapa tanaman contoh.' },
+        ],
+      },
+      {
+        stage: 'panen',
+        label: 'Panen (76–95 HST)',
+        hstStart: 76,
+        hstEnd: 95,
+        topic: 'panen',
+        steps: [
+          { activity: 'panen', title: 'Cabut tanaman bertahap', desc: 'Cabut saat ±80% polong matang; tanah lembap agar mudah.' },
+          { activity: 'lainnya', title: 'Penjemuran & pascapanen', desc: 'Jemur polong lalu banting/rontokkan; keringkan sebelum simpan.' },
         ],
       },
     ],

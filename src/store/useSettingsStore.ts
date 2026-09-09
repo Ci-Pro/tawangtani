@@ -12,10 +12,12 @@ interface SettingsState {
   coords: { lat: number; lon: number } | null;
   province: string | null;
   language: LangCode;
+  chatOnboarded: boolean;
   toggleTheme: () => void;
   setBackendUrl: (url: string) => void;
   setLocation: (name: string, lat: number, lon: number, province?: string) => void;
   setLanguage: (lang: LangCode) => void;
+  setChatOnboarded: (v: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -27,12 +29,14 @@ export const useSettingsStore = create<SettingsState>()(
       coords: null,
       province: null,
       language: 'id',
+      chatOnboarded: false,
       toggleTheme: () =>
         set((s) => ({ themeMode: s.themeMode === 'light' ? 'dark' : 'light' })),
       setBackendUrl: (url) => set({ backendUrl: url }),
       setLocation: (name, lat, lon, province) =>
         set({ locationName: name, coords: { lat, lon }, province: province ?? null }),
       setLanguage: (lang) => set({ language: lang }),
+      setChatOnboarded: (v) => set({ chatOnboarded: v }),
     }),
     { name: 'twt-settings', storage: createJSONStorage(() => AsyncStorage) }
   )

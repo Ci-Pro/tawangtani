@@ -15,6 +15,10 @@ export const SOP_SUPPORTED_CROPS: { slug: string; label: string }[] = [
   { slug: 'cabai', label: 'Cabai' },
   { slug: 'bawang_merah', label: 'Bawang Merah' },
   { slug: 'tomat', label: 'Tomat' },
+  { slug: 'kedelai', label: 'Kedelai' },
+  { slug: 'kentang', label: 'Kentang' },
+  { slug: 'terong', label: 'Terong' },
+  { slug: 'kacang_tanah', label: 'Kacang Tanah' },
 ];
 
 export const SOP_STAGES: { stage: SopPlanStage; label: string }[] = [

@@ -3,6 +3,7 @@ import {
   normalizeCrop,
   extractDoseLine,
   stageForAge,
+  SUPPORTED_CROPS,
 } from '../backend/src/services/planEngine';
 
 const NOW = new Date('2026-09-09T00:00:00Z');
@@ -48,6 +49,12 @@ describe('planEngine — normalizeCrop', () => {
   it('menolak komoditas tak dikenal', () => {
     expect(normalizeCrop('durian')).toBeNull();
     expect(normalizeCrop('')).toBeNull();
+  });
+  it('mengenali alias komoditas baru', () => {
+    expect(normalizeCrop('terung')).toBe('terong');
+    expect(normalizeCrop('kacang')).toBe('kacang_tanah');
+    expect(normalizeCrop('kedelai')).toBe('kedelai');
+    expect(normalizeCrop('kentang')).toBe('kentang');
   });
 });
 
@@ -129,5 +136,25 @@ describe('planEngine — buildSopPlan', () => {
     const r = await buildSopPlan({ cropType: 'jagung' }, { search: fakeSearch(), now: () => NOW });
     expect(r.ok).toBe(true);
     expect(r.crop?.harvestDaysEstimate).toBe(100);
+  });
+
+  it('semua komoditas didukung punya jadwal fase lengkap', async () => {
+    for (const c of SUPPORTED_CROPS) {
+      const r = await buildSopPlan({ cropType: c.slug }, { search: fakeSearch(), now: () => NOW });
+      expect(r.ok).toBe(true);
+      expect(r.phases!.length).toBeGreaterThanOrEqual(3);
+      expect(r.crop?.harvestDaysEstimate).toBeGreaterThan(0);
+      for (const p of r.phases!) {
+        expect(p.steps.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('kedelai: fase & estimasi panen 85 HST', async () => {
+    const r = await buildSopPlan({ cropType: 'kedelai' }, { search: fakeSearch(), now: () => NOW });
+    expect(r.ok).toBe(true);
+    expect(r.phases).toHaveLength(4);
+    expect(r.crop?.label).toBe('Kedelai');
+    expect(r.crop?.harvestDaysEstimate).toBe(85);
   });
 });

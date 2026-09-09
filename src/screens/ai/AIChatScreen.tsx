@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -60,6 +61,8 @@ const AIChatScreen: React.FC = () => {
   const backendUrl = useSettingsStore((s) => s.backendUrl);
   const coords = useSettingsStore((s) => s.coords);
   const locationName = useSettingsStore((s) => s.locationName);
+  const chatOnboarded = useSettingsStore((s) => s.chatOnboarded);
+  const setChatOnboarded = useSettingsStore((s) => s.setChatOnboarded);
   const products = useProductStore((s) => s.products);
   const farms = useFarmStore((s) => s.farms);
   const activeFarmId = useFarmStore((s) => s.activeFarmId);
@@ -78,6 +81,7 @@ const AIChatScreen: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [diagnosisMode, setDiagnosisMode] = useState(false);
   const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [onboardingVisible, setOnboardingVisible] = useState(!chatOnboarded);
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
@@ -340,6 +344,53 @@ const AIChatScreen: React.FC = () => {
             <Ionicons name="send" size={18} color="#ffffff" />
           </TouchableOpacity>
         </View>
+
+        <Modal visible={onboardingVisible} animationType="fade" transparent>
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalSheet, { backgroundColor: palette.surface }]}>
+              <View style={styles.modalHeader}>
+                <Text style={{ color: palette.text, fontWeight: '800', fontSize: 17 }}>
+                  Panduan Ringkas AI Tani
+                </Text>
+                <TouchableOpacity onPress={() => { setOnboardingVisible(false); setChatOnboarded(true); }}>
+                  <Ionicons name="close" size={24} color={palette.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={{ paddingBottom: 8 }}>
+              <View style={{ paddingHorizontal: 16, gap: 12 }}>
+                {[
+                  ['🧮', 'AI memanggil kalkulator & data aktual untuk Anda', 'Tanya luas+dosis → langsung hitung; cuaca & harga pasar diambil dari sumber saat Anda menanyakan.'],
+                  ['📚', 'Dosis tidak pernah dikarang', 'Angka takaran hanya dari basis pengetahuan & katalog produk; jika tak ada, AI bilang tak tahu dan menyarankan konfirmasi ke PPL.'],
+                  ['🩺', 'Mode Diagnosis foto', 'Aktifkan tombol Diagnosis, lalu jelaskan gejala atau lampirkan foto tanaman yang sakit.'],
+                  ['🔌', 'Sebagian data butuh koneksi', 'Cuaca, harga pasar & artikel butuh server. Kalkulator & pencatatan aktivitas tetap jalan offline.'],
+                ].map(([icon, t, d]) => (
+                  <View key={t} style={{ flexDirection: 'row', gap: 10 }}>
+                    <Text style={{ fontSize: 20 }}>{icon}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: palette.text, fontWeight: '700', fontSize: 13.5 }}>{t}</Text>
+                      <Text style={{ color: palette.textMuted, fontSize: 12, lineHeight: 17, marginTop: 2 }}>{d}</Text>
+                    </View>
+                  </View>
+                ))}
+                <Text style={{ color: palette.textMuted, fontSize: 11, lineHeight: 15 }}>
+                  ⚠️ Rekomendasi adalah panduan, bukan pengganti label resmi. Verifikasi dosis produk ke label sebelum aplikasi.
+                </Text>
+              </View>
+              <View style={{ padding: 16 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setOnboardingVisible(false);
+                    setChatOnboarded(true);
+                  }}
+                  style={[styles.sendBtn, { backgroundColor: palette.primary, width: '100%', height: 48, borderRadius: 14, alignSelf: 'center' }]}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Pahami, mulai chat</Text>
+                </TouchableOpacity>
+              </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         <Modal visible={sessionsOpen} animationType="slide" transparent>
           <View style={styles.modalBackdrop}>

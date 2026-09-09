@@ -13,10 +13,16 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useFarmStore } from '@/store/useFarmStore';
 import { useActivityStore, activityLabel } from '@/store/useActivityStore';
 import { fetchSopPlan, SOP_SUPPORTED_CROPS, SOP_STAGES, stageLabel, parseDoseFromText } from '@/services/ai/sopPlan';
-import { todayISO } from '@/utils/date';
+import { todayISO, fmtDateID } from '@/utils/date';
 import { AREA_LABEL } from '@/utils/format';
 import { RootStackParamList } from '@/navigation/types';
 import { AreaUnit, SopPlan, SopPhase } from '@/types';
+
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function Chip(props: { label: string; active: boolean; onPress: () => void }) {
   const { palette } = useTheme();
@@ -40,7 +46,13 @@ function Chip(props: { label: string; active: boolean; onPress: () => void }) {
   );
 }
 
-function PhaseCard(props: { phase: SopPhase; showActions: boolean; onLog: () => void; onCalc?: () => void }) {
+function PhaseCard(props: {
+  phase: SopPhase;
+  showActions: boolean;
+  window?: { start?: string | null; end?: string | null };
+  onLog: () => void;
+  onCalc?: () => void;
+}) {
   const { palette } = useTheme();
   const { phase } = props;
   return (
@@ -62,17 +74,24 @@ function PhaseCard(props: { phase: SopPhase; showActions: boolean; onLog: () => 
         )}
       </View>
 
-      {phase.steps.map((s) => (
-        <View key={s.id} style={[styles.step, { borderBottomColor: palette.border }]}>
-          <Ionicons name="checkmark-circle-outline" size={16} color={palette.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: palette.text, fontWeight: '700', fontSize: 13 }}>
-              {activityLabel(s.activity)} — {s.title}
-            </Text>
-            <Text style={{ color: palette.textMuted, fontSize: 12, lineHeight: 17 }}>{s.desc}</Text>
+{phase.steps.map((s) => (
+          <View key={s.id} style={[styles.step, { borderBottomColor: palette.border }]}>
+            <Ionicons name="checkmark-circle-outline" size={16} color={palette.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: palette.text, fontWeight: '700', fontSize: 13 }}>
+                {activityLabel(s.activity)} — {s.title}
+              </Text>
+              <Text style={{ color: palette.textMuted, fontSize: 12, lineHeight: 17 }}>{s.desc}</Text>
+            </View>
           </View>
-        </View>
-      ))}
+        ))}
+
+        {props.window?.start ? (
+          <Text style={{ color: palette.textMuted, fontSize: 11.5, fontWeight: '700', marginTop: 4 }}>
+            📅 Jadwal: {fmtDateID(props.window.start)}
+            {props.window.end && props.window.end !== props.window.start ? ` — ${fmtDateID(props.window.end)}` : ''}
+          </Text>
+        ) : null}
 
       {phase.doseText ? (
         <View style={[styles.doseBox, { backgroundColor: `${palette.primary}12` }]}>
@@ -160,22 +179,55 @@ const SopPlanScreen: React.FC = () => {
     }
   };
 
+  const resolveBase = (): string | null => {
+    if (withDate && /^\d{4}-\d{2}-\d{2}$/.test(plantingDate)) return plantingDate;
+    const active = plan?.phases?.find((p) => p.active);
+    if (active) {
+      const mid = Math.round((active.hstStart + active.hstEnd) / 2);
+      return addDaysISO(todayISO(), -mid);
+    }
+    return null;
+  };
+
+  const windowOf = (phase: SopPhase): { start: string | null; end: string | null } => {
+    const base = resolveBase();
+    if (!base) return { start: null, end: null };
+    return {
+      start: addDaysISO(base, phase.hstStart),
+      end: phase.hstEnd >= phase.hstStart ? addDaysISO(base, phase.hstEnd) : null,
+    };
+  };
+
   const logPhase = async (phase: SopPhase) => {
+    const base = resolveBase();
     const today = todayISO();
-    for (const s of phase.steps) {
-      await addActivity({
+    const steps = phase.steps;
+    const inputs = steps.map((s, i) => {
+      const offset =
+        steps.length <= 1
+          ? phase.hstStart
+          : phase.hstStart + Math.round((i / (steps.length - 1)) * (phase.hstEnd - phase.hstStart));
+      const date = base ? addDaysISO(base, offset) : today;
+      const remindAt = date > today ? `${date}T07:00:00` : undefined;
+      return {
         farmId: activeFarm?.id,
         cropId: firstCrop?.id,
         cropLabel: plan?.crop?.label,
         activity: s.activity,
-        date: today,
+        date,
+        remindAt,
         doseText: phase.doseText ?? undefined,
         note: `Rencana SOP ${plan?.crop?.label} — ${phase.label}`,
-        source: 'ai',
-        remindAt: phase.active ? `${today}T07:00:00` : undefined,
-      });
-    }
-    Alert.alert('Tercatat', `${phase.steps.length} aktivitas "${phase.label}" ditambahkan ke jadwal hari ini.`);
+        source: 'ai' as const,
+      };
+    });
+    for (const inp of inputs) await addActivity(inp);
+    const from = inputs[0]?.date;
+    const to = inputs[inputs.length - 1]?.date;
+    Alert.alert(
+      'Tercatat',
+      `${inputs.length} aktivitas "${phase.label}" dijadwalkan ${fmtDateID(from)}${to && to !== from ? ` — ${fmtDateID(to)}` : ''}.\nCek & tandai di menu Kalender Aktivitas.`
+    );
   };
 
   const useDose = (phase: SopPhase) => {
@@ -287,12 +339,21 @@ const SopPlanScreen: React.FC = () => {
               key={p.id}
               phase={p}
               showActions={p.active}
+              window={windowOf(p)}
               onLog={() => logPhase(p)}
               onCalc={p.doseText ? () => useDose(p) : undefined}
             />
           ))}
-        </View>
-      ) : null}
+</View>
+        ) : null}
+
+        {plan?.ok ? (
+          <Button
+            title="Lihat Kalender Aktivitas"
+            variant="ghost"
+            onPress={() => navigation.navigate('ActivityCalendar')}
+          />
+        ) : null}
     </Screen>
   );
 };
