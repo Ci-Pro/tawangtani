@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Constants from 'expo-constants';
 
 import { Button } from '@/components/Button';
 import { Card, SectionHeader } from '@/components/Card';
@@ -40,6 +41,11 @@ const ProfileScreen: React.FC = () => {
   const [langOpen, setLangOpen] = useState(false);
 
   const currentLang = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
+
+  const buildCode =
+    Platform.OS === 'ios'
+      ? Constants.expoConfig?.ios?.buildNumber
+      : String(Constants.expoConfig?.android?.versionCode ?? '');
 
   const handleLogout = () => {
     Alert.alert('Keluar', 'Yakin ingin keluar?', [
@@ -195,7 +201,10 @@ const ProfileScreen: React.FC = () => {
 
       <SectionHeader title="Tentang" />
       <Card>
-        <Text style={{ color: palette.text, fontWeight: '800' }}>TAWANGTANI v1.0.0</Text>
+        <Text style={{ color: palette.text, fontWeight: '800' }}>
+          TAWANGTANI v{Constants.expoConfig?.version}
+          {buildCode ? ` (build ${buildCode})` : ''}
+        </Text>
         <Text style={{ color: palette.textMuted, fontSize: 12.5, lineHeight: 19, marginTop: 6 }}>
           Asisten pertanian digital. Aplikasi ini alat bantu — bukan pengganti label resmi produk,
           penyuluh, atau regulasi. Data dosis harus diverifikasi ke sumber resmi.

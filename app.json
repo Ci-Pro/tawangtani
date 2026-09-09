@@ -8,7 +8,7 @@
         "projectId": "d97670b3-f136-4226-9ab1-d4f60303eb16"
       }
     },
-    "version": "1.0.2",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -23,7 +23,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tawangtani.app"
+      "bundleIdentifier": "com.tawangtani.app",
+      "buildNumber": "3"
     },
     "android": {
       "package": "com.tawangtani.app",
