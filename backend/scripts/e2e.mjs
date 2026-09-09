@@ -170,6 +170,22 @@ const main = async () => {
     console.log('  ⤼ ai/chat dilewati (SKIP_AI=1)');
   }
 
+  // 10b. Rencana SOP (deterministik, tanpa kuota AI)
+  r = await req('/api/ai/sop-plan', {
+    method: 'POST',
+    token: jwt,
+    body: { cropType: 'padi', plantingDate: '2026-08-10' },
+  });
+  const sop = r.json ?? {};
+  step('sop-plan: padi menghasilkan fase', r.status === 200 && sop.ok === true && Array.isArray(sop.phases) && sop.phases.length >= 2, `fase=${(sop.phases ?? []).length}`);
+  step('sop-plan: estimasi panen & fase aktif', r.status === 200 && typeof sop.crop?.harvestDaysEstimate === 'number' && sop.phases?.some((p) => p.active) === true);
+  r = await req('/api/ai/sop-plan', {
+    method: 'POST',
+    token: jwt,
+    body: { cropType: 'durian' },
+  });
+  step('sop-plan: komoditas tak dikenal ditolak', r.status === 200 && r.json?.ok === false && typeof r.json?.reason === 'string');
+
   // 11. Halaman admin
   const admin = await fetch(`${BASE}/admin`, { signal: AbortSignal.timeout(30_000) });
   step('admin: halaman panel', admin.status === 200);

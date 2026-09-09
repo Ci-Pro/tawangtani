@@ -29,6 +29,7 @@ import LoginScreen from '@/screens/auth/LoginScreen';
 import SignupScreen from '@/screens/auth/SignupScreen';
 import MarketScreen from '@/screens/market/MarketScreen';
 import GuideScreen from '@/screens/guide/GuideScreen';
+import SopPlanScreen from '@/screens/plan/SopPlanScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator();
@@ -171,6 +172,11 @@ const RootNavigator: React.FC = () => {
               name="Guide"
               component={GuideScreen}
               options={{ title: 'Panduan Aplikasi' }}
+            />
+            <Stack.Screen
+              name="SopPlan"
+              component={SopPlanScreen}
+              options={{ title: 'Rencana SOP' }}
             />
           </>
         )}

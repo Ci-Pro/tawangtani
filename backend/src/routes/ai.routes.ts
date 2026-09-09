@@ -9,6 +9,7 @@ import { parseDiagnosis } from '../services/structured';
 import { userFromHeader } from '../middleware/supabaseUser';
 import { ChatMessageIn, ToolContext } from '../types';
 import { aiLimiter } from '../middleware/rateLimit';
+import { buildSopPlan, SopPlanStage } from '../services/planEngine';
 
 export const aiRouter = Router();
 
@@ -255,4 +256,26 @@ aiRouter.get('/status', (_req: Request, res: Response) => {
     model: process.env.OPENROUTER_MODEL ?? null,
     keyConfigured: hasApiKey(),
   });
+});
+
+/**
+ * Rencana Budidaya SOP (deterministik, grounded ke KB — TANPA LLM/kuota).
+ * Body: { cropType, variety?, plantingDate?, growthStage?, ageDays? }
+ */
+aiRouter.post('/sop-plan', async (req: Request, res: Response) => {
+  const { cropType, variety, plantingDate, growthStage, ageDays } = (req.body ?? {}) as Record<string, unknown>;
+  if (typeof cropType !== 'string' || !cropType.trim()) {
+    return res.status(400).json({ error: 'cropType wajib diisi' });
+  }
+  if (plantingDate !== undefined && (typeof plantingDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(plantingDate))) {
+    return res.status(400).json({ error: 'plantingDate harus format YYYY-MM-DD' });
+  }
+  const result = await buildSopPlan({
+    cropType: cropType.trim().slice(0, 40),
+    variety: typeof variety === 'string' ? variety : undefined,
+    plantingDate: typeof plantingDate === 'string' ? plantingDate : undefined,
+    growthStage: typeof growthStage === 'string' ? (growthStage as SopPlanStage) : undefined,
+    ageDays: typeof ageDays === 'number' && Number.isFinite(ageDays) ? ageDays : undefined,
+  });
+  return res.json(result);
 });

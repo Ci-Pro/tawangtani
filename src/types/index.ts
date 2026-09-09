@@ -169,3 +169,44 @@ export interface SprayCondition {
   level: SprayLevel;
   reasons: string[];
 }
+
+export type SopPlanStage = 'semai' | 'vegetatif' | 'generatif' | 'pematangan' | 'panen';
+
+export interface SopStep {
+  id: string;
+  activity: ActivityType;
+  title: string;
+  desc: string;
+}
+
+export interface SopPhase {
+  id: string;
+  stage: SopPlanStage;
+  label: string;
+  hstStart: number;
+  hstEnd: number;
+  active: boolean;
+  steps: SopStep[];
+  advice: string | null;
+  doseText: string | null;
+  source: string | null;
+}
+
+export interface SopCropInfo {
+  cropType: string;
+  label: string;
+  variety?: string;
+  ageDays: number | null;
+  growthStage: SopPlanStage;
+  harvestDaysEstimate: number;
+}
+
+export interface SopPlan {
+  ok: boolean;
+  reason?: string;
+  crop?: SopCropInfo;
+  phases?: SopPhase[];
+  disclaimer?: string;
+  model: string;
+  generatedAt: string;
+}

@@ -1,4 +1,13 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { AreaUnit, GrowthStage } from '@/types';
+
+export interface CalculatorPrefill {
+  label?: string;
+  area?: string;
+  areaUnit?: AreaUnit;
+  dose?: string;
+  doseUnit?: string;
+}
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -13,8 +22,9 @@ export type RootStackParamList = {
   Activities: undefined;
   ActivityCalendar: undefined;
   Market: undefined;
-  FertilizerCalculator: undefined;
-  PesticideCalculator: undefined;
+  SopPlan: { cropType?: string; cropLabel?: string; plantingDate?: string; growthStage?: GrowthStage } | undefined;
+  FertilizerCalculator: { prefill?: CalculatorPrefill } | undefined;
+  PesticideCalculator: { prefill?: CalculatorPrefill } | undefined;
   GridCalculator: undefined;
   UnitConverter: undefined;
   Guide: undefined;

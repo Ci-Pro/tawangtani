@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
 import { Card, SectionHeader } from '@/components/Card';
@@ -20,6 +21,7 @@ import {
 } from '@/features/fertilizer/calculator';
 import { AREA_UNITS, AREA_LABEL, fmtNum, parseIdNumber } from '@/utils/format';
 import { AreaUnit } from '@/types';
+import { RootStackParamList } from '@/navigation/types';
 
 function Chip(props: { label: string; active: boolean; onPress: () => void }) {
   const { palette } = useTheme();
@@ -47,11 +49,24 @@ const FertilizerCalculatorScreen: React.FC = () => {
   const { palette } = useTheme();
   const addHistory = useHistoryStore((s) => s.add);
   const farms = useFarmStore((s) => s.farms);
+  const activeFarmId = useFarmStore((s) => s.activeFarmId);
 
-  const [areaValue, setAreaValue] = useState(farms[0] ? String(farms[0].areaValue) : '');
-  const [areaUnit, setAreaUnit] = useState<AreaUnit>(farms[0]?.areaUnit ?? 'ha');
-  const [dose, setDose] = useState('');
-  const [doseUnit, setDoseUnit] = useState<FertilizerDoseUnit>('kg/ha');
+  const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
+  const { prefill } =
+    useRoute<RouteProp<RootStackParamList, 'FertilizerCalculator'>>()?.params ?? {};
+
+  const [areaValue, setAreaValue] = useState(
+    prefill?.area ?? (activeFarm ? String(activeFarm.areaValue) : '')
+  );
+  const [areaUnit, setAreaUnit] = useState<AreaUnit>(
+    (prefill?.areaUnit as AreaUnit) ?? activeFarm?.areaUnit ?? 'ha'
+  );
+  const [dose, setDose] = useState(prefill?.dose ?? '');
+  const [doseUnit, setDoseUnit] = useState<FertilizerDoseUnit>(
+    prefill?.doseUnit && FERTILIZER_DOSE_UNITS.includes(prefill.doseUnit as FertilizerDoseUnit)
+      ? (prefill.doseUnit as FertilizerDoseUnit)
+      : 'kg/ha'
+  );
   const [method, setMethod] = useState<FertilizerMethod>('tabur');
   const [gridCount, setGridCount] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +128,14 @@ const FertilizerCalculatorScreen: React.FC = () => {
             <Chip key={u} label={AREA_LABEL[u]} active={areaUnit === u} onPress={() => setAreaUnit(u)} />
           ))}
         </View>
+
+        {prefill?.label ? (
+          <View style={[styles.sopBanner, { backgroundColor: `${palette.primary}14` }]}>
+            <Text style={{ color: palette.primary, fontSize: 12, fontWeight: '700' }}>
+              🌾 Dosis dari Rencana SOP {prefill.label} — bisa Anda ubah.
+            </Text>
+          </View>
+        ) : null}
 
         <SectionHeader title="Dosis Pemupukan" />
         <Input
@@ -209,6 +232,12 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 12.5,
     lineHeight: 18,
+    marginBottom: 12,
+  },
+  sopBanner: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     marginBottom: 12,
   },
   note: {

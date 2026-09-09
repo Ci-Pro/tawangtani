@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRoute, RouteProp } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
 import { Card, SectionHeader } from '@/components/Card';
@@ -18,6 +19,7 @@ import {
 } from '@/features/pesticide/calculator';
 import { AREA_UNITS, AREA_LABEL, fmtNum, parseIdNumber } from '@/utils/format';
 import { AreaUnit, Product, ProductDose } from '@/types';
+import { RootStackParamList } from '@/navigation/types';
 
 function Chip(props: { label: string; active: boolean; onPress: () => void }) {
   const { palette } = useTheme();
@@ -44,6 +46,10 @@ const PesticideCalculatorScreen: React.FC = () => {
   const addHistory = useHistoryStore((s) => s.add);
   const products = useProductStore((s) => s.products);
   const farms = useFarmStore((s) => s.farms);
+  const activeFarmId = useFarmStore((s) => s.activeFarmId);
+  const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
+  const { prefill } =
+    useRoute<RouteProp<RootStackParamList, 'PesticideCalculator'>>()?.params ?? {};
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState('');
@@ -67,12 +73,20 @@ const PesticideCalculatorScreen: React.FC = () => {
     });
   }, [products, pickerQuery]);
 
-  const [dose, setDose] = useState('');
-  const [doseUnit, setDoseUnit] = useState<PesticideDoseUnit>('mL/L');
+  const [dose, setDose] = useState(prefill?.dose ?? '');
+  const [doseUnit, setDoseUnit] = useState<PesticideDoseUnit>(
+    prefill?.doseUnit && PESTICIDE_DOSE_UNITS.includes(prefill.doseUnit as PesticideDoseUnit)
+      ? (prefill.doseUnit as PesticideDoseUnit)
+      : 'mL/L'
+  );
   const [tankVolume, setTankVolume] = useState('14');
   const [waterRate, setWaterRate] = useState('600');
-  const [areaValue, setAreaValue] = useState(farms[0] ? String(farms[0].areaValue) : '');
-  const [areaUnit, setAreaUnit] = useState<AreaUnit>(farms[0]?.areaUnit ?? 'ha');
+  const [areaValue, setAreaValue] = useState(
+    prefill?.area ?? (activeFarm ? String(activeFarm.areaValue) : '')
+  );
+  const [areaUnit, setAreaUnit] = useState<AreaUnit>(
+    (prefill?.areaUnit as AreaUnit) ?? activeFarm?.areaUnit ?? 'ha'
+  );
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PesticideResult | null>(null);
 
@@ -144,6 +158,14 @@ const PesticideCalculatorScreen: React.FC = () => {
           </Text>
           <Ionicons name="chevron-down" size={18} color={palette.textMuted} />
         </TouchableOpacity>
+
+        {prefill?.label ? (
+          <View style={[styles.sopBanner, { backgroundColor: `${palette.primary}14` }]}>
+            <Text style={{ color: palette.primary, fontSize: 12, fontWeight: '700' }}>
+              🌾 Takaran dari Rencana SOP {prefill.label} — bisa Anda ubah.
+            </Text>
+          </View>
+        ) : null}
 
         {selected && selected.doses.length > 0 ? (
           <View style={styles.chips}>
@@ -369,6 +391,13 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 12,
     marginHorizontal: 16,
+  },
+  sopBanner: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 12,
+    marginTop: -4,
   },
   warnText: {
     fontSize: 13,
