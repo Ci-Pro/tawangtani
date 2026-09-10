@@ -10,6 +10,7 @@ e2e lintas repo).
 
 - [implementation-plan-5features.md](./implementation-plan-5features.md) — rencana implementasi 5 fitur utama (harga, AI, widget, notifikasi, sinkronisasi).
 - [price-flow.md](./price-flow.md) — alur data harga: sumber resmi, cron 2×/hari, crowd-sync perangkat, dan koreksi dari laporan petani.
+- [netlify-deploy.md](./netlify-deploy.md) — cara deploy backend sebagai Netlify Functions (api + scheduled sync) dan jadwal cron-nya.
 - [architecture/](./architecture/) — peta migrasi, target arsitektur, urutan refactor yang aman, dan prioritas masalah.
 - [audit/](./audit/) — hasil audit otomatis per domain: [FINAL-AUDIT.md](./audit/FINAL-AUDIT.md) (ringkasan), kontrak API, basis data, keamanan, state, tipe, pegawai, dan inventori berkas.
 
